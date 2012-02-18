@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?> 
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:ge="http://test.com/scxmltest" initialstate="initializing">
+	<datamodel>
+		<script>
+			function util() {
+				log.info("util: " + blah.test.(@blue=="blah")); 
+			}
+		</script>
+		<data name="blah">
+			<test xmlns="http://blah.com" blue="blah">val</test>
+		</data>
+	</datamodel>
+	
+	<state id="initializing">
+		<onentry>
+			<script>//<![CDATA[	
+			
+				var ns = "http://blah.com";
+				default xml namespace = ns;
+				
+				log.info(blah);
+				
+				log.info("blah direct: " + blah.test.@blue);
+								
+				blah.test += <test blue="arg">var</test>;
+				blah.test.(@blue=="blah").appendChild("2");
+				
+				blah.test.(@blue=="blah").appendChild(<inner>lulululu</inner>);
+				
+				
+				log.info(blah.test.(@blue == "arg"));
+				
+				util();
+				
+			//]]></script> 
+		</onentry>
+		<transition event="next" target="nextState" />
+		
+		<onexit>
+			<script>
+				log.info(blah.test.(@blue == "arg"));
+			</script>			
+		</onexit>
+	</state>
+	
+	<state id="nextState">
+		<onentry>
+			<script>
+				var ns = "http://blah.com";
+				default xml namespace = ns;
+				
+				log.info(blah);
+				log.info(blah.@name);
+				log.info(blah.test);
+				log.info(blah.test.(@blue == "arg"));
+				
+				util();
+			</script>
+		</onentry>
+	</state>
+</scxml>

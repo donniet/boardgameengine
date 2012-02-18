@@ -1,0 +1,490 @@
+<?xml version="1.0" encoding="utf-8" ?> 
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:ge="http://test.com/scxmltest" initialstate="initializing">
+	<datamodel>
+		<data name="blah">
+			{ "blah": 0 }
+		</data>
+		<data name="template">
+			{
+				"maxPlayers": 4,
+				"minPlayers": 2,
+				"playerTemplate": {
+					"development": [
+						{"type": "settlement", "count": 5},
+						{"type": "city", "count": 4},
+						{"type": "road", "count": 15}
+					]
+				},
+				"polys": [
+					{"x":0, "y":2},
+		            {"x":3, "y":1},
+		            {"x":6, "y":0},
+		            {"x":9, "y":1},
+		            {"x":12, "y":2},
+		            {"x":12, "y":4},
+		            {"x":12, "y":6},
+		            {"x":9, "y":7},
+		            {"x":6, "y":8},
+		            {"x":3, "y":7},
+		            {"x":0, "y":6},
+		            {"x":0, "y":4},
+		            
+		            
+		            {"x":3, "y":3},
+		            {"x":6, "y":2},
+		            {"x":9, "y":3},
+		            {"x":9, "y":5},
+		            {"x":6, "y":6},
+		            {"x":3, "y":5},
+		            
+		            {"x":6, "y":4}
+				],
+				"polyvalues": [
+					5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11
+				],
+				"polytype": [
+					{"type": "Mountains", "count": 3, "produces": "Ore"},
+					{"type": "Fields",	"count": 4, "produces": "Grain"},
+					{"type": "Pasture", 	"count": 4, "produces": "Wool"},
+					{"type": "Hills", 	"count": 3, "produces": "Brick"},
+					{"type": "Forest",	"count": 4, "produces": "Wood"},
+					{"type": "Desert", 	"count": 1, "produces": null}
+				],
+				"resources": [
+					{"type": "Ore"},
+					{"type": "Grain"},
+					{"type": "Wool"},
+					{"type": "Brick"},
+					{"type": "Wood"}
+				]
+			}
+		</data>
+	</datamodel>
+	<state id="initializing">
+		<onentry>
+			<script>//<![CDATA[
+			util = new Object();
+			//util.test = "this is a test that should add to the number of bytes serialized.";
+			
+			Array.prototype.shuffle = function() {
+				var len = this.length;
+				for(var i = 0; i < len; i++) {
+					var p = Math.floor(Math.random() * len) >>> 0;
+					var t = this[i];
+					this[i] = this[p];
+					this[p] = t;
+				}
+			};
+			Array.prototype.binarySearch = function(x, compare) {
+				if(!compare) 
+					compare = function(a,b) {
+						if(a < b) return -1;
+						if(a > b) return 1;
+						else return 0; 
+					};
+				var b = 0, e = this.length;
+				while(b < e) {
+					var m = Math.floor((b + e) / 2);
+					var c = compare(x, this[m]);
+					if(c < 0) e = m;
+					else if(c > 0) b = m + 1;
+					else return this[m];
+				}
+				return null;
+			};
+			Array.prototype.find = function(x, pred) {
+				if(!pred || typeof pred != "function")
+					pred = function(a,b) { return a === b; }
+					
+				for(var i = 0; i < this.length; i++) {
+					if(pred(x, this[i])) return i;					
+				}
+				return -1;
+			};
+			Array.prototype.search = function(x, pred) {
+				var index = this.find(x, pred);
+				if(index < 0) return null;
+				else return this[index];
+			};
+			util.polyCorners = function(v) {
+				return [
+					{x: v.x + 1, y: v.y     },
+					{x: v.x + 3, y: v.y     },
+					{x: v.x + 4, y: v.y + 1 },
+					{x: v.x + 3, y: v.y + 2 },
+					{x: v.x + 1, y: v.y + 2 },
+					{x: v.x    , y: v.y + 1 }
+				];
+			}
+			util.vertexEqualPred = function(a,b) {
+				return 	a && b && a.x == b.x && a.y == b.y;
+			};
+			util.edgeEqualPred = function(a,b) {
+				return a && b && 
+					((a.x1 == b.x1 && a.y1 == b.y1 && a.x2 == b.x2 && a.y2 == b.y2) ||
+					(a.x1 == b.x2 && a.y1 == b.y2 && a.x2 == b.x1 && a.y2 == b.y1))
+			};
+			util.vertexComparator = function(a,b) {
+				if(!a) return -1;
+				if(!b) return 1;
+				if(a.x < b.x) return -1;
+				if(a.x > b.x) return 1;
+				if(a.y < b.y) return -1;
+				if(a.y > b.y) return 1;
+				return 0;
+			};
+			util.edgeComparator = function(a,b) {
+				if(!a) return -1;
+				if(!b) return 1;
+				if(a.x1 < b.x1) return -1;
+				if(a.x1 > b.x1) return 1;
+				if(a.y1 < b.y1) return -1;
+				if(a.y1 > b.y1) return 1;
+				if(a.x2 < b.x2) return -1;
+				if(a.x2 > b.x2) return 1;
+				if(a.y2 < b.y2) return -1;
+				if(a.y2 > b.y2) return 1;
+				return 0;
+			};
+			util.polyEqualPred = function(a,b) {
+				if(!a || !b || !a.vertex || !b.vertex || !a.vertex.length || !b.vertex.length) return false;
+				if(a.vertex.length != b.vertex.length) return false;
+				
+				var b0index = a.vertex.find(b.vertex[0], util.vertexEqualPred);
+				if(b0index < 0) return false;
+				
+				var len = a.vertex.length;
+				for(var i = 1; i < len; i++) {
+					if(!util.vertexEqualPred(a.vertex[i], b.vertex[(b0index + i)%len]))
+						return false;
+				}
+				return true;
+			};
+			util.adjecentVertices = function(boardInstance, vertex) {
+				return util.__adjecentVerticesHelper(boardInstance, vertex, new Object());
+			};
+			util.__adjecentVerticesHelper = function(boardInstance, vertex, found) {
+				var ret = new Array();
+				var edges = boardInstance.edge;
+				var verts = boardInstance.vertex;
+				
+				for(var i = 0; i < edges.length; i++) {
+					var e = edges[i];
+					if(e.x1 == vertex.x && e.y1 == vertex.y && !found[e.x2 + "," + e.y2]) {
+						var v = verts.binarySearch({x:e.x2, y:e.y2}, util.vertexComparator);
+						if(v) ret.push(v);
+						found[e.x2 + "," + e.y2] = true;
+					}
+					else if(e.x2 == vertex.x && e.y2 == vertex.y && !found[e.x1 + "," + e.y1]) {
+						var v = verts.binarySearch({x:e.x1, y:e.y1}, util.vertexComparator);
+						if(v) ret.push(v);
+						found[e.x1 + "," + e.y1] = true;
+					}
+				}
+				
+				ret.sort(util.vertexComparator);
+				return ret;
+			};
+			util.hasAdjecentDevelopment = function(boardInstance, vertex) {
+				var aa = util.adjecentVertices(boardInstance, vertex);
+				for(var i = 0; i < aa.length; i++) {
+					var v = aa[i];
+					if(v.developments.length > 0) return true;
+				}
+				return false;
+			}
+			util.uhash = function(obj) {
+				if(!obj) return null;
+				else if(typeof obj.x == "number" && typeof obj.y == "number") 
+					return util._uhashVert(obj);
+				else if(typeof obj.x1 == "number" && typeof obj.y1 == "number" && typeof obj.x2 == "number" && typeof obj.y2 == "number") 
+					return util._uhashEdge(obj);
+				else
+					return null;
+			}
+			util._uhashVert = function(obj) {
+				return obj.x + "," + obj.y;
+			}
+			util._uhashEdge = function(obj) {
+				var x1 = obj.x1, y1 = obj.y1, x2 = obj.x2, y2 = obj.y2;
+				
+				if(x1 > x2 || (x1 == x2 && y1 > y2)) {
+					var tx = x1;
+					var ty = y1;
+					x1 = x2;
+					y1 = y2;
+					x2 = tx;
+					y2 = ty;
+				}
+				return x1 + "," + y1 + "," + x2 + "," + y2;
+			}
+			util.instantiateTemplate = function(board, template) {
+				var ret = new Object();
+				ret.vertex = new Array();
+				ret.edge = new Array();
+				ret.poly = new Array();
+				
+				verts = new Object();
+				edges = new Object();
+				
+				for(var i = 0; i < template.polys.length; i++) {
+					var p = template.polys[i];
+					
+					var pv = util.polyCorners(p);
+					
+					var last = pv[pv.length-1];
+					for(var j = 0; j < pv.length; j++) {
+						var c = pv[j];
+						
+						var v = {x: c.x, y: c.y, development:new Array()};
+						if(!verts[util.uhash(v)]) {
+							ret.vertex.push(v);
+							verts[util.uhash(v)] = v;
+						}
+						
+						var e = {x1: last.x, y1: last.y, x2: c.x, y2: c.y, development:new Array()};
+						if(!edges[util.uhash(e)]) {
+							ret.edge.push(e);
+							edges[util.uhash(e)] = e;
+						}
+					}	
+					ret.poly.push(p);				
+				}
+				board.vertex = ret.vertex;
+				board.vertexMap = verts;
+				board.edge = ret.edge;
+				board.edgeMap = edges;
+				board.poly = ret.poly;
+			}
+			util.initializeAndAddPlayer = function(playerId, board, playerTemplate) {
+				var p = {
+					"playerId": playerId,
+					"development": new Object()
+				};
+				for(var i = 0; i < playerTemplate.development.length; i++) {
+					var d = playerTemplate.development[i];
+					p.development[d.type] = d.count;
+				}
+				board.players.push(p);
+				board.playerMap[playerId] = p;
+				log.info("adding player: " + playerId);
+			}
+			util.placeVertexDevelopment = function(board, dev, playerId, vertex) {
+				log.info("placing development: " + dev + "-" + playerId + " " + util.uhash(vertex));
+				var p = board.playerMap[playerId];
+				
+				for(k in p.development) 
+					log.info("developmenttype: " + k);
+				p.development[dev]--;
+				
+				var v = board.vertexMap[util.uhash(vertex)];
+				v.development.push({
+					"type":dev,
+					"player":playerId
+				});
+			}
+			//]]></script>
+			<script>//<![CDATA[
+				board = new Object();
+				board.players = new Array();
+				board.playerMap = new Object();
+				board.minPlayers = template.minPlayers;
+				board.maxPlayers = template.maxPlayers;
+				
+				
+			//]]></script>
+		</onentry>
+		<transition target="waitingForPlayers" />
+	</state>
+	<state id="waitingForPlayers">
+		<transition cond="board.players.length == board.maxPlayers" target="createBoard" />
+		<transition event="game.startGame" cond="board.players.length &lt; board.minPlayers">
+			<ge:error message="You cannot start the game until you get the minimum number of players" />
+		</transition>
+		<transition event="game.startGame" target="createBoard" />
+		
+		<transition event="game.playerJoin" cond="board.players.length + 1 &gt; board.maxPlayers">
+			<ge:error message="The game has reached the maximum number of players." />
+		</transition>
+		<transition event="game.playerJoin">
+			<script>
+				log.info("before:" + util.test);
+				util.initializeAndAddPlayer(_eventdata.player, board, template.playerTemplate);
+			</script>
+		</transition>
+	</state>
+	<state id="createBoard">
+		<!-- randomize resources on board -->
+		<onentry>
+			<script>//<![CDATA[
+				util.instantiateTemplate(board, template);
+				
+				board.currentPlayer = 0;
+			
+				board.tile = new Array();
+				board.polyproduces = new Object();
+				
+				var polytypes = template.polytype;
+				var tilesenum = new Array();
+				
+				for(var i = 0; i < polytypes.length; i++) {
+					var pt = polytypes[i];
+					var d = pt.count;
+					
+					while(d-- > 0) {
+						tilesenum.push(pt.type);
+					}
+					
+					board.polyproduces[pt.type] = pt.produces;
+				}
+				tilesenum.shuffle();
+				
+				var polys = board.poly;
+				var polyvalues = template.polyvalues;
+								
+				for(var i = 0, j = 0; i < polys.length && i < tilesenum.length && j < polyvalues.length; i++) {
+					var p = polys[i];
+					var t = tilesenum[i];
+					var v = polyvalues[j];
+					
+					if(board.polyproduces[t] != null) {
+						board.tile.push({poly: p, type: t, value: v});
+						j++;
+					}
+					else {
+						board.tile.push({poly: p, type: t, value: null});
+					}
+				}
+							
+				log.info("tile[0]: " + board.tile[0].type + "-" + board.tile[0].value);
+				log.info("Data: " + Data);
+				
+				//TEST
+				var v1 = board.vertex.binarySearch({x:3, y:0}, util.vertexComparator);
+				var v2 = board.vertex.binarySearch({x:0, y:1}, util.vertexComparator);
+				var v3 = board.vertex.binarySearch({x:4, y:1}, util.vertexComparator);
+				
+				
+				
+			//]]></script>
+		</onentry>
+		<transition target="placement" />
+	</state>
+	
+	<state id="placement" initial="placement.buildSettlement">
+		<state id="placement.buildSettlement" initial="placement.buildSettlement.build">
+			<state id="placement.buildSettlement.build">
+				<transition event="board.vertexClick" cond="_eventdata.player != board.currentPlayer">
+					<ge:error message="You are not the current player." />
+				</transition>
+				<transition event="board.vertexClick" cond="!board.vertexMap[util.uhash(_eventdata.vertex)]">
+					<ge:error message="Vertex does not exist." />
+				</transition>
+				<transition event="board.vertexClick" cond="log.info(util.uhash(_eventdata.vertex)); log.info(!board.vertexMap[util.uhash(_eventdata.vertex)]); board.vertexMap[util.uhash(_eventdata.vertex)].development.length &gt; 0">
+					<ge:error message="There is already a development on the selected vertex"/>
+				</transition>
+				<transition event="board.vertexClick" cond="util.hasAdjecentDevelopment(board, _eventdata.vertex)">
+					<ge:error message="There is another development on an adjecent vertex"/>
+				</transition>
+				<transition event="board.vertexClick" target="placement.buildSettlement.buildRoad">
+					<script>
+						util.placeVertexDevelopment(board, "settlement", _eventdata.player,  _eventdata.vertex);
+						board.currentVertex = _eventdata.vertex;
+						log.info("after: " + util.test);
+					</script>
+				</transition>
+			</state>
+			
+			<state id="placement.buildSettlement.buildRoad">
+				<transition event="edgeClick" cond="_event.data.player != currentPlayer">
+					<ge:error>You are not the current player.</ge:error>
+				</transition>
+				<transition event="edgeClick" cond="not board.edge.find(_event.data.edge)">
+					<ge:error>Edge does not exist.</ge:error>
+				</transition>
+				<transition event="edgeClick" cond="for(v : board.adjecentVertex(_event.data.edge)) { if(v == currentVertex) return true; } return false;">
+					<ge:error>This edge is not adjecent to the placed settlement.</ge:error>
+				</transition>
+				<transition event="edgeClick" cond="size(board.edge.find(_event.data.edge).developments) > 0">
+					<ge:error>There is already a development on the selected edge.</ge:error>
+				</transition>
+				<transition event="edgeClick" target="placement.buildSettlement.nextPlayerOrPhase">
+					var e = board.edge.find(_event.data.edge);
+					e.developments.append(board.createDevelopment("road", _event.data.player));
+					currentVertex = null;
+				</transition>
+			</state>
+			
+			<state id="placement.buildSettlement.nextPlayerOrPhase">
+				<transition cond="firstPlacement and currentPlayer + 1 &lt; size(board.players)" target="placement.buildSettlement">
+					currentPlayer = currentPlayer + 1;
+				</transition>
+				<transition cond="firstPlacement andcurrentPlayer + 1 &gt;= size(board.players)" target="placement.buildSettlement">
+					firstPlacement = false;
+				</transition>
+				<transition cond="not firstPlacement and currentPlayer &gt; 0" target="placement.buildSettlement">
+					currentPlayer = currentPlayer - 1;
+				</transition>
+				<transition cond="not firstPlacement and currentPlayer &lt;= 0" target="main">
+					currentPlayer = 1;
+					firstPlacement = null;
+				</transition>
+			</state>
+		</state>
+	</state>
+	
+	<state id="main" initial="main.rollDice">
+		<state id="main.rollDice">
+			<transition event="boardClick" cond="_event.data.player != currentPlayer">
+				<ge:error>You are not the current player.</ge:error>
+			</transition>
+			<transition event="boardClick" target="main.checkDiceRoll">
+				board.dice[0] = Math.floor(Math.random() * 6.0) + 1;
+				board.dice[1] = Math.floor(Math.random() * 6.0) + 1;
+				board.diceTotal = board.dice[0] + board.dice[1];
+			</transition>
+		</state>
+		<state id="main.checkDiceRoll">
+			<transition cond="board.diceTotal = 7" target="main.handleRollOf7" />
+			<transition target="main.distributeResources" />
+		</state>
+		<state id="main.handleRollOf7" initial="main.handleRollOf7.discard">
+			<state id="main.handleRollOf7.discard">
+				<onentry>
+					board.playerDiscards = new("java.util.HashMap");
+					board.mustDiscard = false;
+					for(p : board.players) {
+						if(size(p.resources) &gt; 7) {	
+							board.playerDiscards[p.playerId] = size(p.resources
+						board.playerDiscards[p.playerId] = size(p.resources) &gt; 7 ? size(p.resources) - 7 : 0;
+					}
+					
+				</onentry>
+			</state>
+		</state>
+		<state id="main.distributeResources">
+			<onentry>
+				// distribute resources
+			</onentry>
+			<transition target="main.trading" />
+		</state>
+		
+		<state id="main.trading">
+			
+		</state>
+	</state>
+</scxml>
+
+<!--
+vertex has no developments on adjecent vertecies
+it is not the case that there is one development on an adjecent vertex
+size(developments on an adjecent vertex) = 0
+if X is a vertex adjecent to V, then X does not contain a development
+
+(vertex(X) and adjecent(X,V)) imp empty(X.developments())
+
+for(x : adjecentVertex(_event.data.vertex)) { if(size(x.develepments) > 0) return false; } return true;
+
+-->
+
+

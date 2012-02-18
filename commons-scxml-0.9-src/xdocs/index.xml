@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+-->
+
+<document>
+
+ <properties>
+  <title>Commons SCXML</title>
+  <author email="dev@commons.apache.org">Commons Documentation Team</author>
+ </properties>
+
+ <body>
+
+ <section name="Commons SCXML">
+
+  <p>
+  <a href="http://www.w3.org/TR/scxml/">State Chart XML (SCXML)</a> is currently a
+  Working Draft published by the World Wide Web Consortium (W3C).
+  SCXML provides a generic state-machine based execution environment based on Harel
+  State Tables. SCXML is a candidate for the control language within 
+  multiple markup languages coming out of the W3C (see Working Draft for details).
+  <em>Commons SCXML</em> is an implementation aimed at creating
+  and maintaining a Java SCXML engine capable of executing a state machine defined 
+  using a SCXML document, while abstracting out the environment interfaces.
+  </p>
+  <p align="center">
+  <img src="images/scxml-dev-cycle.png"
+       alt="Development cycle when using Commons SCXML" />
+  </p>
+  <p>
+  The use cases for an SCXML engine are multiple and varied. Anything that can be
+  represented as a UML state chart -- business process flows, view navigation bits,
+  interaction or dialog management, and many more -- can leverage an SCXML engine
+  library.
+  </p>
+
+ </section>
+
+
+ <section name="Documentation">
+  <p>
+  Latest documentation is available:
+  </p>
+  <p>
+    <ul>
+      <li>The latest <a href="apidocs/index.html">Javadoc</a>.</li>
+      <li>The latest <a href="xref/index.html">source</a>.</li>
+      <li>The <a href="http://wiki.apache.org/commons/SCXML">wiki</a>.</li>
+      <li>Commons SCXML <a href="usecases.html">usecases</a> (case studies).</li>
+      <li>A <a href="guide.html">user guide</a> containing assorted API notes and tutorials.</li>
+    </ul>
+  </p>
+  <p>
+  Documentation for the most recent release is also available via the left side
+  menu bar.
+  </p>
+ </section>
+
+
+ <section name="Releases">
+  <p>
+  The latest release is v0.9. Read
+  <a href="http://svn.apache.org/viewvc/commons/proper/scxml/tags/SCXML_0_9/RELEASE-NOTES.txt?view=markup">v0.9
+  release notes</a> before upgrading.
+  <a href="http://commons.apache.org/scxml/download_scxml.cgi">Download v0.9!</a>
+  </p>
+  <p>
+  The first release was v0.5. The initial release version number was chosen
+  to be 0.5 (rather than a 1.0) to better convey the fact that the
+  underlying W3C specification is still a Working Draft, and subsequent changes
+  to the Draft may warrant changes to portions of the library API. The core
+  Commons SCXML APIs (SCXMLParser, SCXMLExecutor etc.) are stable.
+  Portions such as processing of &lt;datamodel&gt; and &lt;invoke&gt; SCXML
+  elements, on the other hand, are subject to change as further changes are
+  expected in these sections of the W3C Working Draft. See Working Draft for
+  details.
+  </p>
+ </section>
+
+ <section name="Support">
+  <p>
+   The <a href="mail-lists.html">commons mailing lists</a> act as the main support forum.
+   The user list is suitable for most library usage queries.
+   The dev list is intended for the development discussion.
+   Please remember that the lists are shared between all commons components,
+   so prefix your email by [SCXML].
+  </p>
+  <p>
+   Issues may be reported via <a href="issue-tracking.html">ASF JIRA</a>.
+  </p>
+ </section>
+
+ <section name="Who is using it?">
+  <p>
+   Projects that use Commons SCXML:
+   <ul>
+    <li><a href="http://jakarta.apache.org/taglibs/doc/rdc-doc/intro.html">Reusable Dialog Components (RDC)</a>,
+        part of Apache Jakarta Taglibs - For choreographing the execution of speech components
+        taking part in a voice interaction bounded by a RDC group container.</li>
+    <li><a href="http://shale.apache.org/">Apache Shale</a> - For managing the flow of control in
+        web based applications, using <a href="http://shale.apache.org/shale-dialog/">Shale dialogs</a>.</li>
+    <li><a href="http://www.softwaredemo.de/en">Softwaredemo</a> - A platform for online live testing of software.
+        SCXML is responsible for managing all resources like VMs, storage and virtual desktop components.</li>
+   </ul>
+  </p>
+ </section>
+
+ </body>
+
+</document>

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+-->
+
+<document>
+
+ <properties>
+  <title>Commons SCXML Guide</title>
+  <author email="dev@commons.apache.org">Commons Documentation Team</author>
+ </properties>
+
+ <body>
+
+ <section name="Commons SCXML Guide">
+
+  <p>This is a collection of notes about all things Commons SCXML, a scratch pad of
+  sorts, aimed at noting down usages for the frequently needed bits of Commons
+  SCXML and some related and interesting (to some of us) tidbits.
+  </p>
+
+  <subsection name="Introduction">
+   <p>State Chart XML (SCXML) is a general-purpose event-based state machine
+   language that can be used in many ways.</p>
+   <ul>
+    <li><a href="guide/scxml-documents.html">SCXML documents</a> - A five
+    minute introduction to SCXML documents.</li>
+    <li><a href="guide/using-commons-scxml.html">Commons SCXML</a> - Using
+    the Commons SCXML engine.</li>
+   </ul>
+  </subsection>
+
+  <subsection name="Trying out Commons SCXML">
+   <p>Contains notes about trying Commons SCXML and testing SCXML documents.</p>
+   <ul>
+    <li><a href="guide/testing-standalone.html">Standalone</a> - Rev'ing the
+    engine.</li>
+   </ul>
+  </subsection>
+
+  <subsection name="Core API">
+   <p>Contains notes about the core Commons SCXML APIs.</p>
+   <p>The first set of notes walks through the most common usage pattern,
+   end-to-end.</p>
+   <ul>
+    <li><a href="guide/core-parser.html">SCXML Parser</a> - Parsing SCXML
+    into the Commons SCXML Java object model.</li>
+    <li><a href="guide/datamodel.html">Datamodel</a> - Defining a
+    datamodel and temporary variables.</li>
+    <li><a href="guide/contexts-evaluators.html">Contexts and Evaluators</a> -
+    Plugging in the expression language for the document.</li>
+    <li><a href="guide/core-engine.html">Executor</a> - Instantiating
+    an SCXML executor (engine).</li>
+    <li><a href="guide/core-events.html">Triggering events</a> - Executing
+    the event driven state machine.</li>
+   </ul>
+  </subsection>
+
+  <subsection name="Advanced API">
+   <p>Contains notes about Commons SCXML APIs for extending or
+      altering document semantics.</p>
+   <ul>
+    <li><a href="guide/custom-actions.html">Custom actions</a> - Adding
+    custom actions to the Commons SCXML object model.</li>
+    <li><a href="guide/custom-semantics.html">Custom semantics</a> - Changing
+    the default semantics of the Commons SCXML engine for specialized
+    uses.</li>
+   </ul>
+  </subsection>
+
+  <subsection name="Side-effects">
+   <p>Contains notes about non-primary uses for Commons SCXML.</p>
+   <ul>
+    <li><a href="guide/side-effect-el.html">EL</a> - Trying Commons EL outside
+    a servlet container.</li>
+   </ul>
+  </subsection>
+
+ </section>
+
+ </body>
+
+</document>

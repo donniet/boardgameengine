@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+-->
+
+<document>
+
+ <properties>
+  <title>Commons SCXML Usage - API notes - Triggering Events</title>
+  <author email="dev@commons.apache.org">Commons Documentation Team</author>
+ </properties>
+
+ <body>
+
+  <section name="Commons SCXML - Firing events on the SCXML engine">
+
+   <p>Once the SCXML engine has been initialized, the state machine
+   progresses based on the events that are fired on it. When an event
+   is fired, if the current set of states have transitions waiting
+   for that event, and the guard condition on one of those transitions
+   is satisfied, the state machine is said to &quot;follow&quot; that
+   transition, which may possibly yield a new set of current states.
+   Most state machines will ultimately reach a &quot;final&quot; state,
+   wherein the state machine has said to have executed to completion.
+   </p>
+
+   <subsection name="Basic Usage">
+     <p>An event &quot;foo.bar&quot; may be fired on the engine as
+     follows:</p>
+     <pre>
+        //import org.apache.commons.scxml.SCXMLExecutor;
+        //import org.apache.commons.scxml.TriggerEvent;
+        //import org.apache.commons.scxml.model.ModelException;
+
+        // where &quot;exec&quot; is the SCXMLExecutor instance
+        TriggerEvent te = new TriggerEvent("foo.bar",
+                              TriggerEvent.SIGNAL_EVENT);
+        try {
+            exec.triggerEvent(te);
+        } catch (ModelException me) {
+            // The events left the engine in inconsistent state
+        }
+     </pre>
+
+     <p>If the resulting events leave the state machine in an inconsistent
+     state, a <code>ModelException</code> may be thrown.
+     </p>
+
+   </subsection>
+
+   <subsection name="Event Payloads">
+
+     <p>Furthermore, events can carry within them a <code>payload</code>
+     property that consists of some information that is useful for the guard
+     conditions or executable content while the engine is processing the
+     event. The payload can be any user-defined type.</p>
+     <pre>
+        //import org.apache.commons.scxml.SCXMLExecutor;
+        //import org.apache.commons.scxml.TriggerEvent;
+        //import org.apache.commons.scxml.model.ModelException;
+
+        // where "exec" is the SCXMLExecutor instance
+        // and "foo" is an object (payload) with an accessible property "bar"
+        TriggerEvent te = new TriggerEvent("event.with.payload",
+                              TriggerEvent.SIGNAL_EVENT, foo);
+        try {
+            exec.triggerEvent(te);
+        } catch (ModelException me) {
+            // The events left the engine in inconsistent state
+        }
+     </pre>
+
+     <p>The payload in the above example can now be used in expressions,
+     as the special variable "_eventdata". For example, assuming a JEXL
+     expressions based document, transitions may look like (similarly
+     "_eventdata" may be used in executable content in corresponding
+     &lt;onexit&gt;, &lt;transition&gt; and &lt;onentry&gt; bodies).</p>
+
+     <pre>
+         &lt;transition event="event.with.payload"
+                        cond="_eventdata.bar eq 'bar1'" next="state1" /&gt;
+         &lt;transition event="event.with.payload"
+                        cond="_eventdata.bar eq 'bar2'" next="state2" /&gt;
+     </pre>
+
+   </subsection>
+
+   <subsection name="Multiple Events">
+
+     <p>More than one events may be triggered on the state machine at a
+     time (using <code>triggerEvents()</code> method -- plural). After the engine
+     processes a set of trigger events, it is customary to check whether the
+     state machine has reached a &lt;final&gt; state. All events will operate
+     over the same states ancestor closure.</p>
+
+   </subsection>
+
+   <subsection name="Running to completion">
+
+     <p>The following snippet illustrates how the <code>SCXMLExecutor</code>
+     <code>Status</code> is queried for state machine run to completion.</p>
+
+     <pre>
+        //import org.apache.commons.scxml.SCXMLExecutor;
+        //import org.apache.commons.scxml.Status;
+
+        // where &quot;exec&quot; is the SCXMLExecutor instance    
+        Status status = exec.getCurrentStatus();
+        if (status.isFinal()) {
+            // run to completion, release cached objects
+        }
+     </pre>
+
+     <p>The <code>TriggerEvent</code> Javadoc is available
+     <a href="../apidocs/org/apache/commons/scxml/TriggerEvent.html">
+     here</a>.<br/>
+     The <code>Status</code> Javadoc is available
+     <a href="../apidocs/org/apache/commons/scxml/Status.html">
+     here</a><br/>
+     </p>
+   </subsection>
+
+   <subsection name="API notes set">
+    <p>The previous note in this set describes the
+    <a href="core-engine.html">SCXML engine</a>.</p>
+   </subsection>
+
+  </section> 
+
+ </body>
+
+</document>

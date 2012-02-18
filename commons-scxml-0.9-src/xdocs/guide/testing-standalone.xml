@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+-->
+
+<document>
+
+ <properties>
+  <title>Commons SCXML Usage - API notes - Testing Standalone</title>
+  <author email="dev@commons.apache.org">Commons Documentation Team</author>
+ </properties>
+
+ <body>
+
+  <section name="Commons SCXML - Standalone testing, trying out samples">
+
+   <p>The SCXML distribution provides utility classes that offer a mock
+   command line environments allowing users to try out samples. The core
+   dependencies for Commons SCXML are Commons Digester (which introduces a
+   transitive dependency on Commons BeanUtils, at the least) and Commons
+   Logging.</p>
+
+   <p>View the <a href="../dependencies.html">dependencies</a> page for the
+   recommended version numbers. <i>It may be possible to use lower version
+   numbers for the Commons dependencies.</i></p>
+
+   <p>An environment specific expression language is used in SCXML
+   documents. Commons SCXML currently supports the use of JEXL or JSP 2.0 EL
+   in SCXML documents.</p>
+
+   <subsection name="Using JEXL in SCXML documents">
+
+    <p>The JEXL Standalone class anticipates expressions in JEXL and hence
+    requires commons-jexl.jar.</p>
+
+    <p>So that amounts to (use the correct local paths and filenames to the
+    <code>jar</code> files and the SCXML document, without the line breaks):</p>
+
+    <pre>
+    java -classpath
+
+    commons-digester-1.7.jar;commons-beanutils-1.7.0.jar;
+    commons-logging-1.0.4.jar;commons-scxml-0.9.jar;
+    commons-jexl-1.0.jar
+
+    <a href="../xref/org/apache/commons/scxml/test/StandaloneJexlExpressions.html">org.apache.commons.scxml.test.StandaloneJexlExpressions</a>
+
+    <a href="http://svn.apache.org/repos/asf/commons/proper/scxml/trunk/src/test/java/org/apache/commons/scxml/env/jexl/microwave-01.xml">microwave01.xml</a>
+    </pre>
+
+   </subsection>
+
+   <subsection name="Using JSP 2.0 EL in SCXML documents">
+
+    <p>The JSP Standalone class anticipates expressions in the JSP 2.0 
+    Expression Language, and hence requires commons-el.jar and jsp-api.jar.</p>
+
+    <p>So that amounts to (use the correct local paths and filenames to the
+    <code>jar</code> files and the SCXML document, without the line breaks):</p>
+
+    <pre>
+    java -classpath
+
+    commons-digester-1.7.jar;commons-beanutils-1.7.0.jar;
+    commons-logging-1.0.4.jar;commons-scxml-1.0-SNAPSHOT.jar;
+    commons-el-1.0.jar;jsp-api-2.0.jar
+
+    <a href="../xref/org/apache/commons/scxml/test/StandaloneElExpressions.html">org.apache.commons.scxml.test.StandaloneElExpressions</a>
+
+    <a href="http://svn.apache.org/repos/asf/commons/proper/scxml/trunk/src/test/java/org/apache/commons/scxml/env/jsp/microwave-01.xml">microwave01.xml</a>
+    </pre>
+
+   </subsection>
+
+   <p>You could set up something more elegant (a script, an ant task etc.),
+   but that is what it boils down to.
+   If the document is a well-formed SCXML document, you will be able to 
+   type ? or help at the console and you can follow the directions thereafter 
+   (to simulate events, set variable values, reset the state machine or quit).
+   </p>
+
+   <p>A few examples are available as part of the 
+   <a href="http://svn.apache.org/repos/asf/commons/proper/scxml/trunk/src/test/java/org/apache/commons/scxml/">
+   Commons SCXML test suite</a> (look in env.jexl and env.jsp child packages as well).</p>
+
+  </section> 
+
+ </body>
+
+</document>

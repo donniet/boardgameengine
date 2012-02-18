@@ -1,0 +1,49 @@
+<html>
+<head>
+	<title>Test Event</title>
+	<script type="text/javascript">//<![CDATA[
+		function load() {
+			var gameid = document.getElementById("gameid");
+			var eventname = document.getElementById("eventname");
+			var eventdata = document.getElementById("eventdata");
+			var submit = document.getElementById("submit");
+			var response = document.getElementById("response");
+			
+			submit.onclick = function() {
+				var url = "/game/" + gameid.value + "/event/" + eventname.value;
+				var xhr = new XMLHttpRequest();
+				
+				xhr.onreadystatechange = function() {
+					while(response.firstChild) {
+						response.removeChild(response.firstChild);
+					}
+					switch(xhr.readyState) {
+					case 1:
+						response.appendChild(document.createTextNode("[OPENED]"));
+						break;
+					case 2:
+						response.appendChild(document.createTextNode("[HEADERS_RECEIVED]"));
+						break;
+					case 3:
+						response.appendChild(document.createTextNode("[LOADING]"));
+						break;
+					case 4:
+						response.appendChild(document.createTextNode("[DONE]: " + xhr.responseText));
+						break;
+					}
+				}
+				
+				xhr.open("POST", url, true);
+				xhr.send(eventdata.value);
+			};
+		}
+	//]]></script>
+</head>
+<body onload="load()">
+	GameId: <input type="text" id="gameid" /><br/>
+	Event Name: <input type="text" id="eventname" /><br/>
+	Data: <textarea id="eventdata"></textarea><br/>
+	<input id="submit" value="submit" type="button" /><br/>
+	Response:<br/><pre id="response"></pre>
+</body>
+</html>

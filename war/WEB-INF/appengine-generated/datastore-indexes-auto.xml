@@ -1,0 +1,15 @@
+<!-- Indices written at Mon, 13 Feb 2012 04:23:23 UTC -->
+
+<datastore-indexes>
+
+    <!-- Used 1 time in query history -->
+    <datastore-index kind="GameState" ancestor="true" source="auto">
+        <property name="stateDate" direction="asc"/>
+    </datastore-index>
+
+    <!-- Used 1 time in query history -->
+    <datastore-index kind="GameStateData" ancestor="true" source="auto">
+        <property name="id" direction="asc"/>
+    </datastore-index>
+
+</datastore-indexes>

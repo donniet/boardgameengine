@@ -1,0 +1,908 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+-->
+
+<document>
+
+  <properties>
+    <title>Commons SCXML Changes</title>
+    <author email="rahul@apache.org">Rahul Akolkar</author>
+  </properties>
+
+  <body>
+
+    <section name="About this document">
+      <ul>
+        <li>The latest release of Commons SCXML is version 0.8.</li>
+        <li>If you are interested in helping the project, join us on the
+            <a href="mail-lists.html">commons-dev mailing list</a>.</li>
+      </ul>
+    </section>
+
+    <release version="0.9" date="December 2008"
+     description="Latest release">
+
+     <action dev="rahul" type="fix">
+       [11-21-2008] Added clirr plugin report, cleaned up some checkstyle
+       errors.
+     </action>
+
+     <action dev="rahul" type="add" issue="SCXML-86">
+       [11-21-2008] Support "initial" attribute of &lt;state&gt;.
+     </action>
+
+     <action dev="rahul" type="fix" issue="SCXML-88">
+       [11-21-2008] SCXMLSerializer does not serialize custom namespace
+       declarations.
+     </action>
+
+     <action dev="rahul" type="fix" issue="SCXML-88">
+       [11-21-2008] SCXMLSerializer does not serialize custom namespace
+       declarations.
+     </action>
+
+     <action dev="rahul" type="fix">
+       [11-21-2008] Change "appLog" name to be derived from
+       "SCXMLSemantics.class" rather than the arbitrary "scxml.app.log"
+     </action>
+
+     <action dev="rahul" type="fix" issue="SCXML-90">
+       [11-21-2008] "event" attribute of &lt;send&gt; is not evaluated
+     </action>
+
+     <action dev="rahul" type="add">
+       [11-19-2008] Support executable content in &lt;transition&gt;
+       child of &lt;initial&gt;
+     </action>
+
+     <action dev="rahul" type="add" issue="SCXML-81">
+       [11-19-2008] Support for &lt;onentry&gt; and &lt;onexit&gt; children
+       for &lt;parallel&gt; states.
+     </action>
+
+     <action dev="rahul" type="add" issue="SCXML-82">
+       [11-18-2008] Support for &lt;transition&gt; children for
+       &lt;parallel&gt; states.
+     </action>
+
+     <action dev="rahul" type="fix" issue="SCXML-89" due-to="Joel Truher">
+       [11-14-2008] &lt;assign&gt; doesn't remove all existing children
+       from location.
+     </action>
+
+     <action dev="rahul" type="add" issue="SCXML-80">
+       [11-14-2008] SCXMLParser should throw an exception for parsing
+       failures on bad URIs in &lt;state&gt;'s "src" attribute.
+     </action>
+
+     <action dev="rahul" type="fix" issue="SCXML-87" due-to="Roger Hoover">
+       [11-13-2008] Delayed events not passing payload.
+     </action>
+
+     <action dev="rahul" type="fix" issue="SCXML-85">
+       [11-13-2008] Added Softwaredemo to "Who is using it?"
+     </action>
+
+     <action dev="rahul" type="fix" issue="SCXML-84" due-to="Jakob Sachse">
+       [10-03-2008] Added a tutorial about using Commons SCXML on
+       Google Android.
+     </action>
+
+     <action dev="rahul" type="fix" issue="SCXML-83" due-to="Ingmar Kliche">
+       [08-01-2008] Improvements in &lt;send&gt; serialization.
+     </action>
+
+     <action dev="rahul" type="fix" issue="SCXML-79">
+       [07-30-2008] Stop rendering non-standard "parentid" attribute during
+       serialization.
+     </action>
+
+     <action dev="rahul" type="fix">
+       [07-28-2008] Update datamodel section of the guide to stress namespace
+       awareness of document.
+     </action>
+
+     <action dev="rahul" type="fix">
+       [07-28-2008] &lt;var&gt; and &lt;exit&gt; should be serialized in the
+       Commons SCXML namespace.
+     </action>
+
+     <action dev="rahul" type="fix" issue="SCXML-78" due-to="Daniel Schwager">
+       [07-28-2008] SCXMLListeners will not processed in defined order.
+     </action>
+
+     <action dev="rahul" type="fix" issue="SCXML-77" due-to="Edzard Hoefig">
+       [07-28-2008] Correct semantics for &lt;param&gt; with only the "name"
+       attribute specified.
+     </action>
+
+     <action dev="rahul" type="fix" issue="SCXML-76" due-to="Ingmar Kliche">
+       [07-28-2008] Serialization of expressions may produce invalid XML.
+     </action>
+
+     <action dev="rahul" type="add" issue="SCXML-75" due-to="Daniel Schwager">
+       [07-11-2008] Make TriggerEvent class Serializable.
+     </action>
+
+     <action dev="rahul" type="add" issue="SCXML-74" due-to="Edzard Hoefig">
+       [07-11-2008] &lt;data&gt; should support the "id" attribute.
+     </action>
+
+     <action dev="rahul" type="fix" issue="SCXML-73" due-to="Elaine Wong">
+       [06-17-2008] The "delay" attribute of the &lt;send&gt; element
+       should be a value expression.
+     </action>
+
+     <action dev="rahul" type="add">
+       [06-17-2008] Support the "initial" attribute of the &lt;scxml&gt;
+       element, added in the 4th Working Draft.
+     </action>
+
+    </release>
+
+    <release version="0.8" date="May 2008"
+     description="Release">
+
+     <action dev="rahul" type="add" issue="SCXML-64">
+       [05-03-2008] Better error reporting for ignored or misplaced elements
+       by parser (SCXMLParser class).
+     </action>
+
+     <action dev="rahul" type="add" issue="SCXML-62">
+       [04-25-2008] Enhancement request for supporting fragment URLs in
+       &lt;state&gt; element's src attribute.
+     </action>
+
+     <action dev="rahul" type="fix" issue="SCXML-67" due-to="SeongSoo Park">
+       [02-09-2008] Process &lt;parallel&gt; child of &lt;state&gt; correctly.
+     </action>
+
+     <action dev="rahul" type="fix" issue="SCXML-66">
+       [01-26-2008] Improve first-hit performance for following transitions
+       by working out the paths at parse-time.
+     </action>
+
+     <action dev="rahul" type="update">
+       [01-03-2008] Clarify via Javadocs that the SCXMLParser assumes the
+       input to be a well-formed and correct SCXML document.
+     </action>
+
+     <action dev="rahul" type="add" due-to="Ross Yakulis">
+       [01-03-2008] Added tests for SCXML-64.
+     </action>
+
+     <action dev="rahul" type="add">
+       [01-03-2008] Add the issues test package for tracking tests tied to
+       the Commons issue tracker.
+     </action>
+
+     <action dev="rahul" type="update">
+       [01-03-2008] Improve serialization of &lt;transition&gt; elements.
+     </action>
+
+     <action dev="rahul" type="add">
+       [01-03-2008] Add assertPostTriggerState() methods to SCXMLTestHelper.
+     </action>
+
+     <action dev="rahul" type="update" due-to="Sebastian Bazley">
+       [12-20-2007] Minor site updates: add a prominent download link, and
+       update a few remaining Jakarta references.
+     </action>
+
+    </release>
+
+    <release version="0.7" date="December 2007"
+     description="Release">
+
+     <action dev="rahul" type="add">
+       [12-12-2007] Add experimental Maven2 pom.xml to source distro.
+     </action>
+
+     <action dev="rahul" type="update">
+       [12-12-2007] Update JUnit dependency version to 3.8.2.
+     </action>
+
+     <action dev="rahul" type="update">
+       [12-08-2007] AbstractStateMachine and SimpleSCXMLListener classes
+       switched to the new SCXMLParser.
+      </action>
+
+      <action dev="rahul" type="update">
+       [12-06-2007] Recommended version of Commons Logging has been upgraded
+       to v1.1.1.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-53">
+       [12-06-2007] Wild card event name handling on transitions made in
+       line with WD.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-61">
+       [12-04-2007] Clarify via class Javadoc interaction model between
+       Invokers and parent executor.
+      </action>
+
+      <action dev="rahul" type="add" issue="SCXML-55">
+       [12-04-2007] Add support for the &lt;event&gt; tag.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-58">
+       [12-04-2007] Object model not stateless due to State class. Store the
+       completion status for composite states along with other instance
+       information in the executor.
+      </action>
+
+      <action dev="rahul" type="fix">
+       [12-04-2007] Deprecate SCXMLDigester class in favor of the new
+       SCXMLParser class. The new class supports newer Working Drafts and has
+       better naming.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-60" due-to="Andy Bailey">
+       [12-03-2007] Fix possible race condition in AsyncTrigger class.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-54" due-to="Mike Tillberg">
+       [12-03-2007] Events from custom actions missing payload. Also fix
+       test classes to safely create contexts.
+      </action>
+
+      <action dev="rahul" type="fix">
+       [12-03-2007] Skip serialization tests if necessary directory cannot
+       be created.
+      </action>
+
+      <action dev="rahul" type="add">
+       [11-30-2007] Support nested invokes when using SimpleSCXMLInvoker
+       class.
+      </action>
+
+      <action dev="niallp" type="add" due-to="Niall Pemberton">
+       [11-16-2007] Update Maven 2 build to include source and binary
+       assemblies and site resources.
+      </action>
+
+      <action dev="rahul" type="fix">
+       [08-20-2007] Apply per region document order filter for transition
+       conflict resolution. See SCXML-52 for part of discussion.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-49">
+       [08-06-2007] SimpleSCXMLInvoker may miss transition to final state.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-52" due-to="Ingmar Kliche">
+       [08-01-2007] Fix conflict resolution for conditionless stay transitions.
+       class.
+      </action>
+
+      <action dev="rahul" type="fix">
+       [07-30-2007] Various changes related to the Commons TLP move.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-51">
+       [07-27-2007] Delete existing child nodes before adding new ones
+       when using &lt;assign&gt; to supply new values to &lt;data&gt; nodes.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-48" due-to="Michael Heuer">
+       [06-26-2007] Fixed subclassing behavior for AbstractStateMachine
+       class.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-44">
+       [06-15-2007] Better names for getter and setter of the boolean
+       property State#isFinal. Previous names deprecated.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-46" due-to="Michael Heuer">
+       [06-15-2007] Added a SCXMLListener abstract adapter class.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-41">
+       [06-15-2007] Added information about failing expression to
+       evaluation error messages.
+      </action>
+
+      <action dev="bayard" type="remove" due-to="Henri Yandell">
+       [06-14-2007] Remove KEYS file, in favor of one file for all of Commons.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-45">
+       [05-29-2007] Payload of events sent to current scxml session using
+       &lt;send&gt; tag are now injected into engine. Commons SCXML adds
+       the special <i>_eventdatamap</i> variable for storing payloads
+       for derived events.
+      </action>
+
+      <action dev="rahul" type="update">
+       [04-25-2007] Replace deprecated API usage, with current ones.
+      </action>
+
+      <action dev="rahul" type="update">
+       [04-25-2007] The test package switched to using SCXMLParser class.
+      </action>
+
+      <action dev="rahul" type="update">
+       [04-25-2007] Added support for &lt;final&gt; to SCXMLParser class.
+      </action>
+
+      <action dev="rahul" type="add">
+       [04-25-2007] Add a Commons SCXML namespace to support implementation
+       specific actions. Moved &lt;var&gt; and &lt;exit&gt; actions to
+       this implementation specific namespace.
+      </action>
+
+      <action dev="rahul" type="add">
+       [03-24-2007] New set of tests matching vocabulary in latest Working
+       Draft, for testing the new SCXMLParser class.
+      </action>
+
+      <action dev="rahul" type="update">
+       [03-24-2007] Deprecate various method in the model package (primarily
+       SCXML, State and Parallel classes) based on changes brought on by the
+       latest WDs.
+      </action>
+
+      <action dev="rahul" type="add">
+       [03-22-2007] Add new parser (org.apache.commons.scxml.io.SCXMLParser)
+       to support latest WD and improve naming.
+      </action>
+
+      <action dev="rahul" type="add">
+       [03-12-2007] The regions of a parallel are entered in document
+       order. This is implementation-specific behavior and users should
+       not rely on it.
+      </action>
+
+      <action dev="rahul" type="add">
+       [03-12-2007] Added tests for conflict resolution based on document
+       order and for multiple transition targets.
+      </action>
+
+      <action dev="rahul" type="fix">
+       [03-12-2007] Deprecated various methods in Transition class that
+       refer to a singular target.
+      </action>
+
+      <action dev="rahul" type="add">
+       [03-12-2007] Implement ability to support multiple transition targets
+       (space separated list of state IDs). IDs must no longer contain
+       whitespace.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-30">
+       [03-12-2007] Better handling of parent-child relationships (part 1).
+      </action>
+
+      <action dev="rahul" type="fix">
+       [03-12-2007] Deprecated State#getTransitions() in favor of
+       State#getTransitionsList().
+      </action>
+
+      <action dev="rahul" type="add">
+       [03-09-2007] Implement document order priority for transitions.
+      </action>
+
+      <action dev="rahul" type="fix">
+       [12-18-2006] SCXMLExecutor#logState() now uses debug level to reduce noise
+       at console.
+      </action>
+
+    </release>
+
+    <release version="0.6" date="December 2006"
+     description="Release">
+
+      <action dev="rahul" type="fix" issue="SCXML-16" due-to="Sitthichai Rernglertpricha">
+       [12-12-2006] target and targettype attributes of &lt;send&gt; element
+       are now evaluated as expressions.
+      </action>
+
+      <action dev="rahul" type="fix">
+       [12-12-2006] Set tests to warn, but not fail, if the DOM L2
+       implementation in use is not serializable.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-32">
+       [12-07-2006] Update Commons Logging to version 1.1.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-32">
+       [12-07-2006] Update Commons JEXL to version 1.1.
+      </action>
+
+      <action dev="rahul" type="add" issue="SCXML-33">
+       [12-07-2006] Improved processing of namespace prefixes in
+       deferred evaluation of XPath expressions.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-32">
+       [12-06-2006] Update Commons Digester to version 1.8.
+      </action>
+
+      <action dev="rahul" type="add" issue="SCXML-31" due-to="Nestor Urquiza">
+       [11-22-2006] Logging for &lt;var&gt; and &lt;assign&gt;.
+      </action>
+
+      <action dev="rahul" type="add">
+       [11-08-2006] Add project DOAP file.
+      </action>
+
+      <action dev="rahul" type="add">
+       [11-07-2006] Add a test case to demonstrate adding a custom
+       action with the same local name as one of the standard SCXML
+       actions (but a different namespace).
+      </action>
+
+      <action dev="rahul" type="add">
+       [11-04-2006] Add tests to ensure white box behavior of the
+       &lt;state&gt; element's src attribute.
+      </action>
+
+      <action dev="rahul" type="fix">
+       [10-23-2006] Up to date versions for the usecases blurbs
+       for the website. Update image on site front page.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-29">
+       [10-17-2006] Added serial version UIDs.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-21">
+       [10-17-2006] New EventDispatcher implementation (SimpleScheduler)
+       that provides the ability to deal with delayed events for the
+       "scxml" &lt;send&gt; targettype.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-2">
+       [10-11-2006] Some thread-safety improvements for
+       SCXMLExecutor instances.
+      </action>
+
+      <action dev="rahul" type="fix">
+       [10-11-2006] Update to new ASLv2 license headers for source files.
+      </action>
+
+      <action dev="rahul" type="add" issues="SCXML-20">
+       [10-05-2006] The Commons SCXML object model as well as the
+       SCXMLExecutor instances are now serializable.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-25">
+       [10-02-2006] Deprecate ErrorReporter fields, add ErrorConstants
+       class for default Commons SCXML semantics.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-23">
+       [09-29-2006] Begin the deprecation process for custom digester
+       rules in the io package.
+      </action>
+
+      <action dev="rahul" type="fix">
+       [09-21-2006] SCXML elements have to be defined in the following
+       namespace (case sensitive): http://www.w3.org/2005/07/scxml
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-14" due-to="Sitthichai Rernglertpricha">
+       [08-07-2006] Allow the target of a transition to be omitted.
+      </action>
+
+      <action dev="rahul" type="fix">
+       [07-28-2006] Updated website to reflect 0.5 release.
+      </action>
+
+    </release>
+
+    <release version="0.5" date="July 2006"
+     description="First release">
+
+      <action dev="rahul" type="fix" issue="SCXML-13">
+       [07-19-2006] SCXML doesn't compile using (Sun) JDK 1.5.
+       actions.
+      </action>
+
+      <action dev="rahul" type="add" issue="SCXML-3">
+       [07-19-2006] Add src attribute processing for assign tag.
+      </action>
+
+      <action dev="rahul" type="add">
+       [06-19-2006] Added invoke, param and finalize processing. These
+       SCXML elements were added in the January 2006 Working Draft.
+      </action>
+
+      <action dev="rahul" type="fix">
+       [05-17-2006] Reflect use of JIRA as the issue tracker for
+       Commons SCXML. Bugzilla should no longer be used.
+      </action>
+
+      <action dev="rahul" type="add">
+       [05-17-2006] Added examples of shallow and deep history.
+      </action>
+
+      <action dev="rahul" type="fix" issue="SCXML-8">
+       [05-17-2006] External document digester now processes custom
+       actions.
+      </action>
+
+      <action dev="rahul" type="add">
+       [05-04-2006] Added section on custom semantics to user guide.
+      </action>
+
+      <action dev="rahul" type="add" issue="SCXML-4">
+       [05-04-2006] Added explicit Instructions on core-engine.html
+       from user guide.
+      </action>
+
+      <action dev="rahul" type="add" issue="SCXML-10">
+       [05-04-2006] Added datamodel explanation and examples to user
+       guide.
+      </action>
+
+      <action dev="rahul" type="add">
+       [05-04-2006] Added documentation blurb on common interaction
+       patterns using the Commons SCXML library (the "glue" or "bridge"
+       code).
+      </action>
+
+      <action dev="rahul" type="fix">
+       [04-24-2006] Commons SCXML has graduated from Commons Sandbox,
+       updated repository to reflect move to Commons Proper.
+      </action>
+
+      <action dev="rahul" type="add">
+       [04-20-2006] Added documentation on "_eventdata" and method
+       invocation in expression languages used.
+      </action>
+
+      <action dev="rahul" type="add">
+       [04-20-2006] Allow SCXML documents using EL to define arbitrary EL
+       functions by providing a FunctionMapper to the ELEvaluator.
+      </action>
+
+      <action dev="rahul" type="add" issue="SCXML-11">
+       [04-20-2006] Provide access to SCXMLExecutor's root context.
+      </action>
+
+      <action dev="rahul" type="add">
+       [04-03-2006] Added support for the wildcard (*) event.
+      </action>
+
+      <action dev="rahul" type="add">
+       [04-03-2006] Added _eventdata support. The payload of a triggered
+       event is available under the special variable named _eventdata.
+      </action>
+
+      <action dev="rahul" type="fix">
+       [03-28-2006] Unnamed trigger events are now correctly processed
+       (they do not match any event name).
+      </action>
+
+      <action dev="rahul" type="add">
+       [03-23-2006] Initial cut at supporting the datamodel section from
+       the January 06 Working Draft.
+      </action>
+
+      <action dev="rahul" type="add">
+       [03-06-2006] Added a FAQ page for the Commons SCXML website.
+       Added a section on SCXML Contexts and Evaluators (plugging in an
+       expression language) to the online "guide".
+      </action>
+
+      <action dev="rahul" type="add">
+       [03-03-2006] Add support for "target" attribute of "transition"
+       element per the latest (Jan 06) WD.
+      </action>
+
+      <action dev="rahul" type="add" due-to="Wendy Smoak">
+       [03-03-2006] Added a Maven2 POM.
+      </action>
+
+      <action dev="rahul" type="add" issue="SCXML-7">
+       [03-01-2006] A new usecase for a stand-alone application
+       modeling a stopwatch.
+       <dueto name="Stephen Colebourne"/>
+       <dueto name="Tim O'Brien"/>
+      </action>
+
+      <action dev="rahul" type="add">
+       [02-28-2006] AbstractStateMachine class added that demonstrates
+       one approach for providing the base functionality needed by
+       standalone classes representing stateful entities, whose
+       behaviors are defined via SCXML documents.
+      </action>
+
+      <action dev="rahul" type="add">
+       [02-27-2006] Improve Commons SCXML website "guide". Added a
+       section on SCXML documents, and another on custom actions.
+      </action>
+
+      <action dev="rahul" type="add">
+       [02-25-2006] Added easier support for custom actions. Provide
+       a "hello world" example using a custom action.
+      </action>
+
+      <action dev="rahul" type="fix">
+       [02-25-2006] Refactor processing of actions (they now contain
+       an "execute" method).
+      </action>
+
+      <action dev="rahul" type="add">
+       [02-24-2006] Define ExternalContent interface to mark elements
+       that may contain "body content" (in external namespaces), for
+       example, the SCXML "send" element. 
+      </action>
+
+      <action dev="rahul" type="fix">
+       [02-22-2006] Minor Javadoc fixes and additions.
+      </action>
+
+      <action dev="rahul" type="add">
+       [02-09-2006] Basic test cases for SCXML document execution
+       when using JEXL as the expression language.
+      </action>
+
+      <action dev="rahul" type="fix" due-to="sungchan">
+       [02-09-2006] JexlEvaluator was still assuming a flat context
+       (which was changed on 02-05-2006, see change item below).
+      </action>
+
+      <action dev="rahul" type="add" issue="SCXML-1" due-to="Peter Costa">
+       [02-05-2006] Numerous JUnit test cases added. Start publishing
+       cobertura report.
+      </action>
+
+      <action dev="rahul" type="update">
+       [02-05-2006] Contexts are now created per State, but only as and
+       when needed. The
+       <a href="http://svn.apache.org/viewcvs?rev=374981&amp;view=rev">
+       commit message for r374981</a> has the details.
+      </action>
+
+      <action dev="rahul" type="update" issue="SCXML-6" due-to="Tim O'Brien">
+       [02-05-2006] The Commons SCXML object model is now decoupled from
+       the SCXML execution engine instance. The Commons SCXML object model
+       is now stateless. For example (incomplete list):
+        <ol>
+          <li>A "SCXML" object no longer contains a root "Context"</li>
+          <li>A "State" no longer contains a "Context"</li>
+          <li>A "Transition" no longer contains a list of "SCXMLListeners"
+              attached</li>
+          <li>A "History" no longer contains the last known configuration.
+              </li>
+        </ol>
+        The advantage of this decoupling is that the SCXML document can be
+        parsed once and reused across multiple execution instances,
+        concurrently or otherwise.
+      </action>
+
+      <action dev="rahul" type="update">
+       [01-22-2006] Package reorganization. Mostly out of discussions on
+       the dev list, three new packages were introduced:
+        <ol>
+          <li>A "test" package for the command line testing utility
+              classes</li>
+          <li>An "io" package for classes related to reading and writing
+              SCXML documents</li>
+          <li>A "servlet" environment package for the classes that
+              depend on the servlet API for Commons SCXML usecases in
+              servlet containers.</li>
+        </ol>
+      </action>
+
+      <action dev="rahul" type="update">
+       [01-11-2006] Various website and documentation improvements.
+      </action>
+
+      <action dev="rahul" type="update">
+       [01-08-2006] Improve dependencies webpage by providing URLs for each.
+       Improve navigation by providing "quick links".
+      </action>
+
+      <action dev="rahul" type="add">
+       [01-08-2006] Added JEXL support for SCXML documents.
+      </action>
+
+      <action dev="rahul" type="update">
+       [01-07-2006] SCXML serialization bits available in a utility class.
+      </action>
+
+      <action dev="rahul" type="update">
+       [12-21-2005] SCXML digester instances are now available for further
+       customization of the default digester ruleset.
+      </action>
+
+      <action dev="rahul" type="update">
+       [12-21-2005] The static digest() methods of the SCXMLDigester class
+       now throw the same exceptions as the underlying ones from
+       Digester#parse().
+      </action>
+
+      <action dev="rahul" type="add">
+       [12-10-2005] Make digester namespace aware, and capture arbitrary namespace
+       children of SCXML &lt;send&gt; element.
+      </action>
+
+      <action dev="rahul" type="update">
+       [11-17-2005] Site overhaul according to recent discussions on the
+       commons-dev mailing list.
+      </action>
+
+      <action dev="rahul" type="update">
+       [10-18-2005] Decouple SCXML engine from the SCXML execution semantics;
+       make SCXML semantics pluggable.
+      </action>
+
+      <action dev="rahul" type="add">
+       [10-18-2005] Added UML state machine diagrams to the usecases section
+       of the website.
+      </action>
+
+      <action dev="rahul" type="add">
+       [10-14-2005] Added documentation on usecases to website:
+       <ol>
+        <li>Usecase 1: To configure instances of the RDC group container.</li>
+        <li>Usecase 2: To describe Shale dialogs.</li>
+       </ol>
+      </action>
+
+      <action dev="rahul" type="add">
+       [10-14-2005] Added API notes to website:
+       <ol>
+        <li>SCXML digester</li>
+        <li>SCXML engine</li>
+        <li>Firing events on an SCXML engine</li>
+        <li>Standalone testing</li>
+        <li>Fun with EL</li>
+       </ol>       
+      </action>
+
+      <action dev="rahul" type="add">
+       [10-14-2005] Updated dependency information to indicate purpose of
+       dependency (core, test, usecases etc.).
+      </action>
+
+      <action dev="rahul" type="add">
+       [10-14-2005] Added Commons look and feel (navigation bar) to website.
+      </action>
+ 
+      <action dev="rahul" type="add">
+       [10-10-2005] Added second usecase for Commons SCXML (within ASF projects).
+       Demonstrated the use of SCXML documents for describing Shale dialogs.
+      </action>
+
+      <action dev="rahul" type="add">
+       [10-09-2005] Add a faces package for JSF-based environments (env.faces)
+      </action>
+
+      <action dev="rahul" type="update">
+       [10-09-2005] Updated ant build file to include MyFaces dependency
+       (usecases only).
+      </action>
+
+      <action dev="rahul" type="add">
+       [10-08-2005] Out of the box "simple" interface implementations.
+       <ol>
+        <li>Added simple loggers that implement ErrorHandler, ErrorReporter
+        and SCXMLListener.</li>
+        <li>Added a SimpleContext that wraps a variables (name to value) Map.</li>
+       </ol>
+      </action>
+
+      <action dev="rahul" type="fix">
+       [10-08-2005] VariableResolver#resolveVariable() should return null if variable
+       is not found instead of throwing an exception (in ELEvaluator.java)
+      </action>
+
+      <action dev="rahul" type="update">
+        [09-29-2005] The scxml.env package has a new child jsp package, to distribute
+        the current contents of the env package such that each supported environment
+        can get its own package in the source.
+      </action>
+
+      <action dev="rahul" type="update">
+        [09-29-2005] Enhanced the Standalone testing functionality to enable:
+        <ol>
+          <li>Value change events on the current Context.</li>
+          <li>Dummy events to re-evaluate conditionals on event-less transitions.</li>
+        </ol>
+      </action>
+
+      <action dev="rahul" type="update" due-to="Jaroslav Gergic">
+        [09-15-2005] Now handling outgoing transitions from a Parallel 
+        (Section 3.4 SCXML WD).
+      </action>
+
+      <action dev="rahul" type="fix">
+        [09-15-2005] Minor Javadoc tweaks.
+      </action>
+
+      <action dev="rahul" type="update">
+        [09-15-2005] "Microwave" test samples reset timer on leaving "cooking"
+        state so state machines can be re-run many times (without a "reset")
+      </action>
+
+      <action dev="rahul" type="update">
+        [09-08-2005] Updated Commons SCXML logo.
+      </action>
+
+      <action dev="rahul" type="update">
+        [08-27-2005] Use a customized set of checkstyle rules. These are the Sun checks
+        with three changes as discussed on the dev list:
+        <ol>
+          <li>Use a regexp header check for ASL</li>
+          <li>Disable 'hide a field' check (lot of noise from setters)</li>
+          <li>Disable 'method design for extension' check</li>
+        </ol>
+      </action>
+
+      <action dev="rahul" type="fix">
+        [08-27-2005] Six minor code changes based on FindBugs reports.
+      </action>
+
+      <action dev="rahul" type="update">
+        [08-25-2005] Switch to new ant build file that will work better for the
+        Commons nightlies.
+      </action>
+
+      <action dev="rahul" type="fix">
+        [08-24-2005] RootContext (used in the JSP environment) should override 
+        ELContext#has(String) method.
+      </action>
+
+      <action dev="rahul" type="update">
+        [08-24-2005] Enhanced couple of samples used by the test cases.
+      </action>
+
+      <action dev="rahul" type="add">
+        [08-23-2005] Added JUnit Test Framework.
+      </action>
+
+      <action dev="rahul" type="fix">
+        [08-23-2005] Upgraded Digester version in project dependencies to 1.7.
+      </action>
+
+      <action dev="rahul" type="add">
+        [08-23-2005] Added BeanUtils 1.7.0 dependency as needed by Digester.
+      </action>
+
+      <action dev="rahul" type="fix">
+        [08-20-2005] Corrected year of inception in License.
+      </action>
+
+      <action dev="rahul" type="fix">
+        [08-20-2005] Corrected some 1500+ checkstyle errors.
+      </action>
+
+      <action dev="rahul" type="add">
+        [08-20-2005] This changes document added.
+      </action>
+
+      <action dev="rahul" type="add">
+        [08-17-2005] Initial SCXML codebase copied from the RDC Taglib codebase
+        (part of Jakarta Taglibs Proper).
+      </action>
+
+      <action dev="rahul" type="add">
+        [08-17-2005] Initial build artifacts, STATUS and PROPOSAL documents.
+      </action>
+
+    </release>
+
+  </body>
+
+</document>

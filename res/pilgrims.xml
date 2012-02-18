@@ -1,0 +1,423 @@
+<?xml version="1.0" encoding="utf-8" ?> 
+<scxml xmlns="http://www.w3.org/2005/07/scxml" initialstate="initializing">
+	<datamodel>
+		<script>//<![CDATA[
+				
+		g = "http://www.pilgrimsofnatac.com/schemas/game.xsd";
+		gamens = new Namespace(g);
+		default xml namespace = g;
+		
+		util = {
+			initializeAndAddPlayer: function(playerId, board, playerTemplate) {
+				var player = <player><playerId>{playerId}</playerId></player>;
+					
+				for(var i = 0; i < playerTemplate.*.length(); i++) {
+					player.appendChild(playerTemplate.child(i));
+				}
+				
+				log.info("about to add a player: " + state.board);
+						
+				var player = state.board.appendChild(player);
+								
+				log.info("adding player: " + playerId);
+				log.info("done players: " + state.board);
+			},
+			polyCorners: function(x, y) {
+				x = x >>> 0;
+				y = y >>> 0;
+				return <>
+					<point x={1 + x} y={0 + y} />
+					<point x={3 + x} y={0 + y} />
+					<point x={4 + x} y={1 + y} />
+					<point x={3 + x} y={2 + y} />
+					<point x={1 + x} y={2 + y} />
+					<point x={0 + x} y={1 + y} />
+					</>;
+			},
+			uhash: function(obj) {
+				if(!obj) return null;
+				else if(obj.localName() == "vertex" || obj.localName == "poly") 
+					return util._uhashVert(obj);
+				else if(obj.localName() == "edge")
+					return util._uhashEdge(obj);
+				else
+					return null;
+			},
+			_uhashVert: function(obj) {
+				return obj.@x + "," + obj.@y;
+			},
+			_uhashEdge: function(obj) {
+				var x1 = obj.@x1, y1 = obj.@y1, x2 = obj.@x2, y2 = obj.@y2;
+				
+				if(x1 > x2 || (x1 == x2 && y1 > y2)) {
+					var tx = x1;
+					var ty = y1;
+					x1 = x2;
+					y1 = y2;
+					x2 = tx;
+					y2 = ty;
+				}
+				return x1 + "," + y1 + "," + x2 + "," + y2;
+			},
+			instantiateTemplate: function(board, template) {
+				var verts = new Object();
+				var edges = new Object();
+				
+				for(var i = 0; i < template.polys.poly.length(); i++) {
+					var p = template.polys.poly[i];
+					
+					var pv = util.polyCorners(p.@x, p.@y);
+										
+					var last = pv[pv.length() - 1];
+					for(var j = 0; j < pv.length(); j++) {
+						var c = pv[j];
+												
+						var vert = <vertex x={c.@x} y={c.@y} />;
+						if(!verts[util.uhash(vert)]) {
+							board.verteces.appendChild(vert);
+							verts[util.uhash(vert)] = vert;
+						}
+						
+						var e = <edge x1={last.@x} y1={last.@y} x2={c.@x} y2={c.@y} />;
+						if(!edges[util.uhash(e)] && (last.@x != c.@x || last.@y != c.@y)) {
+							board.edges.appendChild(e);
+							edges[util.uhash(e)] = e;
+						}
+					}
+					
+					board.polys.appendChild(<poly x={p.@x} y={p.@y} />);
+				}
+				
+				delete verts;
+				delete edges;
+			},
+			shuffle: function(arr) {
+				var len = arr.length;
+				for(var i = 0; i < len; i++) {
+					var p = Math.floor(Math.random() * len) >>> 0;
+					var t = arr[i];
+					arr[i] = arr[p];
+					arr[p] = t;
+				}
+			},
+			adjecentVertexFromPoly: function(board, x, y) {
+				var corners = util.polyCorners(x, y);
+				
+				var ret = <></>;
+				
+				for(var i = 0; i < corners.length(); i++) {
+					var corner = corners[i];
+					ret += board.verteces.vertex.(@x==corner.@x && @y==corner.@y);
+				}
+				return ret;
+			},
+			adjecentVertexFromVertex: function(board, x, y) {
+				var edges1 = board.edges.edge.(@x1 == x && @y1 == y);
+				var edges2 = board.edges.edge.(@x2 == x && @y2 == y);
+				
+				var ret = <></>;
+				
+				for(var i = 0; i < edges1.length(); i++) {
+					var edge = edges1[i];
+					ret += board.verteces.vertex.(@x == edge.@x2 && @y == edge.@y2);
+				}
+				for(var i = 0; i < edges2.length(); i++) {
+					var edge = edges2[i];
+					ret += board.verteces.vertex.(@x == edge.@x1 && @y == edge.@y1);
+				}
+				return ret;
+			},
+			adjecentVertexFromEdge: function(board, x1, y1, x2, y2) {
+				
+			},
+			hasAdjecentDevelopment: function(board, x, y) {
+				var adjecent = util.adjecentVertexFromVertex(board, x, y);
+				
+				for(var i = 0; i < adjecent.length(); i++) {
+					var v = adjecent[i];
+					if(v.development.length() > 0)
+						return true;
+				}
+				return false;
+			},
+			placeVertexDevelopment: function(board, dev, pId, x, y) {
+				log.info("placing development: " + dev + "-" + pId.text() + " " + x + "," + y);
+				var p = board.player.(playerId.text() == pId.text())[0];
+				var pd = p.development.(@type == dev)[0];
+				var v = board.verteces.vertex.(@x==x && @y==y)[0];
+				
+				//log.info("player: " + pId + ":" + p);
+				//log.info("vertex: " + v.toXMLString());
+				
+				v.appendChild(<development type={pd.@type} player={p.playerId.text()} count="1" />);
+				pd.@count -= 1;
+			},
+			placeEdgeDevelopment: function(board, dev, pId, x1, y1, x2, y2) {
+				log.info("placing development: " + dev + "-" + pId.text() + " " + x1 + "," + y1 + "," + x2 + "," + y2);
+				var p = board.player.(playerId.text() == pId.text())[0];
+				var pd = p.development.(@type == dev)[0];
+				var e = board.edges.edge.(@x1==x1 && @y1==y1 && @x2==x2 && @y2==y2)[0];
+				
+				//log.info("player: " + pId + ":" + p);
+				//log.info("vertex: " + v.toXMLString());
+				
+				e.appendChild(<development type={pd.@type} player={p.playerId.text()} count="1" />);
+				pd.@count -= 1;
+			},
+			findEdge: function(board, x1, y1, x2, y2) {
+				return board.edges.edge.((@x1==x1 && @y1==y1 && @x2==x2 && @y2==y2) || (@x1==x2 && @y1==y2 && @x2==x1 && @y2==y1))[0];
+			},
+			findVertex: function(board, x, y) {
+				return board.verteces.vertex.(@x==x && @y==y)[0];
+			},
+			hasDevelopment: function(obj) {
+				return !!obj && !!obj.development && obj.development.length() > 0;
+			}
+			
+		};
+		//]]></script> -->
+		<data name="state">
+			<template xmlns="http://www.pilgrimsofnatac.com/schemas/game.xsd">
+				<maxPlayers>4</maxPlayers>
+				<minPlayers>2</minPlayers>
+				<playerTemplate>
+					<development type="settlement" count="5" />
+					<development type="city" count="4" />
+					<development type="road" count="15" />
+				</playerTemplate>
+				<polys values="5 2 6 3 8 10 9 12 11 4 8 10 9 4 5 6 3 11">
+					<poly x="0" y="2" />
+					<poly x="3" y="1" />
+					<poly x="6" y="0" />
+					<poly x="9" y="1" />
+					<poly x="12" y="2" />
+					<poly x="12" y="4" />
+					<poly x="12" y="6" />
+					<poly x="9" y="7" />
+					<poly x="6" y="8" />
+					<poly x="3" y="7" />
+					<poly x="0" y="6" />
+					<poly x="0" y="4" />
+					<poly x="3" y="3" />
+					<poly x="6" y="2" />
+					<poly x="9" y="3" />
+					<poly x="9" y="5" />
+					<poly x="6" y="6" />
+					<poly x="3" y="5" />
+					<poly x="6" y="4" />
+				</polys>
+				<polytypes>
+					<polytype type="Mountains" count="3" produces="Ore" />
+					<polytype type="Fields" count="4" produces="Grain" />
+					<polytype type="Pasture" count="4" produces="Wool" />
+					<polytype type="Hills" count="3" produces="Brick" />
+					<polytype type="Forest" count="4" produces="Wood" />
+					<polytype type="Desert" count="1" />
+				</polytypes>
+				<resources>
+					<resource type="Ore" />
+					<resource type="Grain" />
+					<resource type="Wool" />
+					<resource type="Brick" />
+					<resource type="Wood" />
+				</resources>
+			</template>
+			<board xmlns="http://www.pilgrimsofnatac.com/schemas/game.xsd"></board>
+		</data>
+	</datamodel>
+	<state id="initializing">
+		<onentry>
+			<script>//<![CDATA[
+				
+				state.board.appendChild(<minPlayers>{state.template.minPlayers.text()}</minPlayers>);
+				state.board.appendChild(<maxPlayers>{state.template.maxPlayers.text()}</maxPlayers>);
+				state.board.appendChild(<polys/>);
+				state.board.appendChild(<verteces/>);
+				state.board.appendChild(<edges/>);				
+				
+			//]]></script>
+		</onentry>
+		<transition target="waitingForPlayers" />
+	</state>
+	
+	<state id="waitingForPlayers">
+		<transition cond="state.board.player &amp;&amp; state.board.player.length() == state.board.maxPlayers" target="createBoard" />
+		<transition event="game.startGame" cond="state.board.player &amp;&amp; state.board.player.length() &lt; state.board.minPlayers">
+			<script>log.error("You cannot start the game until you get the minimum number of players")</script>
+		</transition>
+		<transition event="game.startGame" target="createBoard" />
+		
+		<transition event="game.playerJoin" cond="state.board.player.length() + 1 &gt; state.board.maxPlayers">
+			<script>log.error("The game has reached the maximum number of players.")</script>
+		</transition>
+		<transition event="game.playerJoin">
+			<script>//<![CDATA[
+				log.info("Event Data: " + _eventdata.toXMLString());
+				util.initializeAndAddPlayer(_eventdata.player.text(), state.board, state.template.playerTemplate);
+			//]]></script>
+		</transition>
+	</state>
+	<state id="createBoard">
+		<!-- randomize resources on board -->
+		<onentry>
+			<script>//<![CDATA[
+				util.instantiateTemplate(state.board, state.template);
+				
+				state.board.appendChild(state.template.polytypes);
+				state.board.appendChild(<currentPlayer>0</currentPlayer>);
+								
+				var tilesenum = new Array();
+				
+				for(var i = 0; i < state.template.polytypes.polytype.length(); i++) {
+					var pt = state.template.polytypes.polytype[i];
+					var d = pt.@count >>> 0;
+					
+					while(d-- > 0) {
+						tilesenum.push(pt.@type);
+					}
+				}
+				util.shuffle(tilesenum);
+				
+				var polyvalues = state.template.polys.@values.split(" ");
+				
+				for(var i = 0, j = 0; i < state.board.polys.poly.length() && i < tilesenum.length && j < polyvalues.length; i++) {
+					var p = state.board.polys.poly[i];
+					var t = tilesenum[i];
+					var v = polyvalues[j];
+					
+					var prod = state.board.polytypes.polytype.(@type==t).@produces;
+					//log.info("prod: " + t + " -> " + prod);
+					
+					if(prod && prod.toString() != "") {
+						p.@value = v;
+						p.@type = t.toString();
+						j++;
+					}
+					else {
+						p.@type = t;
+					}
+				}
+				
+				delete tilesenum;
+				
+			//]]></script>
+		</onentry>
+		<transition target="placement">
+			<script>//<![CDATA[
+				state.board.appendChild(<firstPlacement>true</firstPlacement>);
+			//]]></script>
+		</transition>
+	</state>
+	
+	<state id="placement" initial="placement.buildSettlement">
+		<state id="placement.buildSettlement" initial="placement.buildSettlement.build">
+			<state id="placement.buildSettlement.build">
+				<transition event="board.vertexClick" cond="_eventdata.player.text() != state.board.player[state.board.currentPlayer].playerId.text()">
+					<script>log.error("You are not the current player.");</script>
+					<raise event="'error.platform'" />
+				</transition>
+				<transition event="board.vertexClick" cond="!util.findVertex(state.board, _eventdata.vertex.@gamens::x, _eventdata.vertex.@gamens::y)">
+					<script>log.error("Vertex does not exist: ");</script>
+					<raise event="'error.platform'" />
+				</transition>
+				<transition event="board.vertexClick" cond="util.hasDevelopment(util.findVertex(state.board, _eventdata.vertex.@gamens::x, _eventdata.vertex.@gamens::y))">
+					<script>log.error("There is already a development on the selected vertex");</script>
+					<raise event="'error.platform'" />
+				</transition>
+				<transition event="board.vertexClick" cond="util.hasAdjecentDevelopment(state.board, _eventdata.vertex.@gamens::x, _eventdata.vertex.@gamens::y)">
+					<script>log.error("There is another development on an adjecent vertex");</script>
+					<raise event="'error.platform'" />
+				</transition>
+				<transition event="board.vertexClick" target="placement.buildSettlement.buildRoad">
+					<script>//<![CDATA[
+						util.placeVertexDevelopment(state.board, "settlement", _eventdata.player,  _eventdata.vertex.@gamens::x, _eventdata.vertex.@gamens::y);
+						state.board.appendChild(<currentVertex x={_eventdata.vertex.@gamens::x} y={_eventdata.vertex.@gamens::y} />);
+					//]]></script>
+				</transition>
+			</state>
+			
+			<state id="placement.buildSettlement.buildRoad">
+				<transition event="board.edgeClick" cond="_eventdata.player.text() != state.board.player[state.board.currentPlayer].playerId.text()">
+					<script>log.error("You are not the current player.");</script>
+					<raise event="'error.platform'" />
+				</transition>
+				<transition event="board.edgeClick" cond="!util.findEdge(state.board, _eventdata.edge.@gamens::x1, _eventdata.edge.@gamens::y1, _eventdata.edge.@gamens::x2, _eventdata.edge.@gamens::y2)">
+					<script>log.error("Edge does not exist: " + _eventdata.edge.toXMLString());</script>
+					<raise event="'error.platform'" />
+				</transition>
+				<transition event="board.edgeClick" cond="(_eventdata.edge.@gamens::x1 != state.board.currentVertex.@x || _eventdata.edge.@gamens::y1 != state.board.currentVertex.@y) &amp;&amp; (_eventdata.edge.@gamens::x2 != state.board.currentVertex.@x || _eventdata.edge.@gamens::y2 != state.board.currentVertex.@y)">
+					<script>log.error("This edge is not adjecent to the placed settlement.");</script>
+					<raise event="'error.platform'" />
+				</transition>
+				<transition event="board.edgeClick" cond="util.hasDevelopment(util.findEdge(state.board, _eventdata.edge.@gamens::x1, _eventdata.edge.@gamens::y1, _eventdata.edge.@gamens::x2, _eventdata.edge.@gamens::y2))">
+					<script>log.error("There is already a development on the selected edge.");</script>
+					<raise event="'error.platform'" />
+				</transition>
+				<transition event="board.edgeClick" target="placement.buildSettlement.nextPlayerOrPhase">
+					<script>//<![CDATA[
+						util.placeEdgeDevelopment(state.board, "road", _eventdata.player, _eventdata.edge.@gamens::x1, _eventdata.edge.@gamens::y1, _eventdata.edge.@gamens::x2, _eventdata.edge.@gamens::y2);
+						delete state.board.currentVertex;
+					//]]></script>
+				</transition>
+			</state>
+			
+			<state id="placement.buildSettlement.nextPlayerOrPhase">
+				<transition cond="state.board.firstPlacement == 'true' &amp;&amp; (state.board.currentPlayer.text() >>> 0) + 1 &lt; state.board.player.length()" target="placement.buildSettlement">
+					<script>//<![CDATA[
+						state.board.currentPlayer = (state.board.currentPlayer.text() >>> 0) + 1;
+					//]]></script>
+				</transition>
+				<transition cond="state.board.firstPlacement == 'true' &amp;&amp; (state.board.currentPlayer.text() >>> 0) + 1 >= state.board.players.length()" target="placement.buildSettlement">
+					<script>//<![CDATA[
+						state.board.firstPlacement = 'false';
+					//]]></script>
+				</transition>
+				<transition cond="state.board.firstPlacement != 'true' &amp;&amp; (state.board.currentPlayer.text() >>> 0) > 0" target="placement.buildSettlement">
+					<script>//<![CDATA[
+						state.board.currentPlayer = (state.board.currentPlayer.text() >>> 0) - 1;
+					//]]></script>
+				</transition>
+				<transition cond="state.board.firstPlacement != 'true' &amp;&amp; state.board.currentPlayer &lt;= 0" target="main">
+					<script>//<![CDATA[
+						state.board.currentPlayer = 1;
+						delete state.board.firstPlacement;
+					//]]></script>
+				</transition>
+			</state>
+		</state>
+	</state>
+	<state id="main" initial="main.rollDice">
+		<state id="main.rollDice">
+			<transition event="boardClick" cond="_event.data.player != currentPlayer">
+				<script>log.error("You are not the current player.");</script>
+			</transition>
+			<transition event="boardClick" target="main.checkDiceRoll">
+				<script>//<![CDATA[
+					board.dice[0] = Math.floor(Math.random() * 6.0) + 1;
+					board.dice[1] = Math.floor(Math.random() * 6.0) + 1;
+					board.diceTotal = board.dice[0] + board.dice[1];
+				//]]></script>
+			</transition>
+		</state>
+		<state id="main.checkDiceRoll">
+			<transition cond="board.diceTotal == 7" target="main.handleRollOf7" />
+			<transition target="main.distributeResources" />
+		</state>
+		<state id="main.handleRollOf7" initial="main.handleRollOf7.discard">
+			<state id="main.handleRollOf7.discard">
+				<onentry>
+				</onentry>
+			</state>
+		</state>
+		<state id="main.distributeResources">
+			<onentry>
+				// distribute resources
+			</onentry>
+			<transition target="main.trading" />
+		</state>
+		
+		<state id="main.trading">
+			
+		</state>
+	</state>
+</scxml>
