@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="douglascrockford-JSON-java-6394d92"/>
+	<classpathentry kind="src" path="res"/>
+	<classpathentry excluding="org/apache/commons/scxml/env/faces/|org/apache/commons/scxml/env/jsp/|org/apache/commons/scxml/test/" kind="src" path="commons-scxml-0.9-src/src/main/java"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-beanutils-1.8.2.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-digester-1.8.1.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-jexl-1.1.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-logging-1.1.1.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/js.jar" sourcepath="/home/donniet/rhino1_7R3"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/xalan.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/flexjson-2.1.jar" sourcepath="flexjson-2.1/flexjson-2.1-sources.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-codec-1.6.jar" sourcepath="/home/donniet/commons-codec-1.6/commons-codec-1.6-sources.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/serializer.jar"/>
+	<classpathentry kind="con" path="com.google.appengine.eclipse.core.GAE_CONTAINER"/>
+	<classpathentry kind="output" path="war/WEB-INF/classes"/>
+</classpath>

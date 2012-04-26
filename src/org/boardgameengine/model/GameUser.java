@@ -31,7 +31,7 @@ public class GameUser extends ScriptableObject {
 	@Persistent
 	private String userId;
 	
-	@NotPersistent
+	@Persistent
 	transient private String hashedUserId;
 	
 	@Persistent
@@ -69,6 +69,23 @@ public class GameUser extends ScriptableObject {
 		return ret;
 	}
 	
+	public static GameUser findByHashedUserId(final String hashedUserId) {
+		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
+		
+		GameUser ret = null;
+		
+		Query q = pm.newQuery(GameUser.class);
+		q.setFilter("hashedUserId == hashedUserIdIn");
+		q.declareParameters(String.class.getName() + " hashedUserIdIn");
+		List<GameUser> results = (List<GameUser>)q.execute(hashedUserId);
+		
+		if(results.size() > 0) {
+			ret = results.get(0);			
+		}
+		pm.close();
+		return ret;		
+	}
+	
 	public static GameUser findOrCreateGameUserByUser(final User user) {
 		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
 		
@@ -82,7 +99,6 @@ public class GameUser extends ScriptableObject {
 		if(results.size() > 0) {
 			ret = results.get(0);
 			pm.close();
-			ret.hashedUserId = ret.createHashedUserId();
 			
 			return ret;
 		}
@@ -119,9 +135,6 @@ public class GameUser extends ScriptableObject {
 		this.hashedUserId = createHashedUserId();
 	}
 	public String getHashedUserId() {
-		if(hashedUserId == null) {
-			hashedUserId = createHashedUserId();
-		}
 		return hashedUserId;
 	}
 	

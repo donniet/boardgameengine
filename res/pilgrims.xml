@@ -2,14 +2,20 @@
 <scxml xmlns="http://www.w3.org/2005/07/scxml" initialstate="initializing">
 	<datamodel>
 		<script>//<![CDATA[
-				
+						
 		g = "http://www.pilgrimsofnatac.com/schemas/game.xsd";
 		gamens = new Namespace(g);
 		default xml namespace = g;
 		
 		util = {
 			initializeAndAddPlayer: function(playerId, board, playerTemplate) {
-				var player = <player><playerId>{playerId}</playerId></player>;
+				var colors = playerTemplate.@colors.text().toString().split(" ");
+				log.info(playerTemplate.@colors.text().toString());
+				log.info(state.board.player.length());
+				var playerColor = colors[state.board.player.length()];
+				log.info(playerColor);
+				var player = <player><playerId>{playerId}</playerId><color>{playerColor}</color></player>;
+				log.info(player.toXMLString());
 					
 				for(var i = 0; i < playerTemplate.*.length(); i++) {
 					player.appendChild(playerTemplate.child(i));
@@ -21,6 +27,7 @@
 								
 				log.info("adding player: " + playerId);
 				log.info("done players: " + state.board);
+				log.info("color: " + state.board.player.(playerId=="l-WkcSZ4vh-1phKasmf-fZbfLXQ").color.text());
 			},
 			polyCorners: function(x, y) {
 				x = x >>> 0;
@@ -59,10 +66,7 @@
 				}
 				return x1 + "," + y1 + "," + x2 + "," + y2;
 			},
-			instantiateTemplate: function(board, template) {
-				var verts = new Object();
-				var edges = new Object();
-				
+			instantiateTemplate: function(board, template) {				
 				for(var i = 0; i < template.polys.poly.length(); i++) {
 					var p = template.polys.poly[i];
 					
@@ -71,25 +75,27 @@
 					var last = pv[pv.length() - 1];
 					for(var j = 0; j < pv.length(); j++) {
 						var c = pv[j];
-												
-						var vert = <vertex x={c.@x} y={c.@y} />;
-						if(!verts[util.uhash(vert)]) {
-							board.verteces.appendChild(vert);
-							verts[util.uhash(vert)] = vert;
+						
+						if(board.verteces.vertex.(@x == c.@x && @y == c.@y).length() == 0) {
+							board.verteces.appendChild(<vertex x={c.@x} y={c.@y} />);
 						}
 						
-						var e = <edge x1={last.@x} y1={last.@y} x2={c.@x} y2={c.@y} />;
-						if(!edges[util.uhash(e)] && (last.@x != c.@x || last.@y != c.@y)) {
-							board.edges.appendChild(e);
-							edges[util.uhash(e)] = e;
+						if((last.@x < c.@x || (last.@x == c.@x && last.@y < c.@y)) && 
+							board.edges.edge.(@x1==last.@x && @y1==last.@y && @x2==c.@x && @y2==c.@y).length() == 0) 
+						{							
+							board.edges.appendChild(<edge x1={last.@x} y1={last.@y} x2={c.@x} y2={c.@y} />);
 						}
+						else if((last.@x > c.@x || (last.@x == c.@x && last.@y > c.@y)) &&
+							board.edges.edge.(@x2==last.@x && @y2==last.@y && @x1==c.@x && @y1==c.@y).length() == 0)
+						{
+							board.edges.appendChild(<edge x2={last.@x} y2={last.@y} x1={c.@x} y1={c.@y} />);
+						}
+						
+						last = c;
 					}
 					
 					board.polys.appendChild(<poly x={p.@x} y={p.@y} />);
 				}
-				
-				delete verts;
-				delete edges;
 			},
 			shuffle: function(arr) {
 				var len = arr.length;
@@ -180,7 +186,7 @@
 			<template xmlns="http://www.pilgrimsofnatac.com/schemas/game.xsd">
 				<maxPlayers>4</maxPlayers>
 				<minPlayers>2</minPlayers>
-				<playerTemplate>
+				<playerTemplate colors="red green blue orange">
 					<development type="settlement" count="5" />
 					<development type="city" count="4" />
 					<development type="road" count="15" />
@@ -206,6 +212,28 @@
 					<poly x="3" y="5" />
 					<poly x="6" y="4" />
 				</polys>
+				<ports>
+					<port tradeIn="2" tradeOut="1" resource="Ore" />
+					<port tradeIn="2" tradeOut="1" resource="Grain" />
+					<port tradeIn="2" tradeOut="1" resource="Wool" />
+					<port tradeIn="2" tradeOut="1" resource="Brick" />
+					<port tradeIn="2" tradeOut="1" resource="Wood" />
+					<port tradeIn="3" tradeOut="1" />
+					<port tradeIn="3" tradeOut="1" />
+					<port tradeIn="3" tradeOut="1" />
+					<port tradeIn="3" tradeOut="1" />
+					<locations>
+						<vertex x="10" y="1" />	<vertex x="12" y="1" />
+						<vertex x="15" y="2" /> <vertex x="16" y="3" />
+						<vertex x="16" y="5" /> <vertex x="15" y="6" />
+						<vertex x="13" y="8" /> <vertex x="12" y="9" />
+						<vertex x="9" y="10" /> <vertex x="7" y="10" />
+						<vertex x="4" y="9" /> <vertex x="3" y="8" />
+						<vertex x="1" y="6" /> <vertex x="0" y="5" />
+						<vertex x="0" y="3" /> <vertex x="1" y="2" />
+						<vertex x="4" y="1" /> <vertex x="6" y="1" />
+					</locations>
+				</ports>
 				<polytypes>
 					<polytype type="Mountains" count="3" produces="Ore" />
 					<polytype type="Fields" count="4" produces="Grain" />
@@ -241,20 +269,32 @@
 	</state>
 	
 	<state id="waitingForPlayers">
-		<transition cond="state.board.player &amp;&amp; state.board.player.length() == state.board.maxPlayers" target="createBoard" />
+		<transition cond="state.board.player &amp;&amp; state.board.player.length() == state.board.maxPlayers" target="createBoard">
+			<script>//<![CDATA[
+				log.info("Max Players: " + state.board.maxPlayers);
+				log.info("State.board.player.length(): " + state.board.player.length());
+			]]></script>
+		</transition>
 		<transition event="game.startGame" cond="state.board.player &amp;&amp; state.board.player.length() &lt; state.board.minPlayers">
-			<script>log.error("You cannot start the game until you get the minimum number of players")</script>
+			<script>log.info("You cannot start the game until you get the minimum number of players")</script>
 		</transition>
 		<transition event="game.startGame" target="createBoard" />
 		
 		<transition event="game.playerJoin" cond="state.board.player.length() + 1 &gt; state.board.maxPlayers">
-			<script>log.error("The game has reached the maximum number of players.")</script>
+			<script>log.info("The game has reached the maximum number of players.")</script>
 		</transition>
 		<transition event="game.playerJoin">
 			<script>//<![CDATA[
-				log.info("Event Data: " + _eventdata.toXMLString());
-				util.initializeAndAddPlayer(_eventdata.player.text(), state.board, state.template.playerTemplate);
+				log.info("Event Data: " + _eventdata.toXMLString() + ", player: " + _eventdata.text());
+				util.initializeAndAddPlayer(_eventdata.text(), state.board, state.template.playerTemplate);
 			//]]></script>
+			<send 	event="'game.playerJoined'" 
+					target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+					targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+					id="'game.playerJoined.send'">
+				<param name="playerid" expr="_eventdata.text()" />
+				<param name="role" expr="state.board.player.(playerId.text()==_eventdata.text()).color.text()" />
+			</send>
 		</transition>
 	</state>
 	<state id="createBoard">
@@ -299,6 +339,25 @@
 				}
 				
 				delete tilesenum;
+				
+				var ports = new Array();
+				state.board.appendChild(<ports></ports>);
+				
+				for(var i = 0; i < state.template.ports.port.length(); i++) {
+					ports[i] = i;
+				}
+				util.shuffle(ports);
+				
+				for(var i = 0; i < state.template.ports.locations.vertex.length(); i++) {
+					var loc = state.template.ports.locations.vertex[i];
+					var port = state.template.ports.port[ports[(i/2)>>>0]];
+					
+					var p = <port x={loc.@x} y={loc.@y} tradeIn={port.@tradeIn} tradeOut={port.@tradeOut} resource={port.@resource} />;
+					
+					state.board.ports.appendChild(p);		
+				}
+				
+				delete ports;
 				
 			//]]></script>
 		</onentry>

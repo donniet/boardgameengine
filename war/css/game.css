@@ -1,0 +1,627 @@
+
+@font-face {
+	font-family: "Goudy Bookletter 1911";
+	src: url("/fonts/GoudyBookletter1911.otf");
+}
+
+@font-face {
+	font-family: "Fanwood";
+	src: url("/fonts/Fanwood.otf");
+}
+
+body {
+    margin: 0px;
+    background: url(/i/wood_100.jpg);
+    font-family: "Fanwood";
+    overflow:hidden;
+}
+#dice {
+	position:absolute;
+	padding:8px;
+	/*
+	border-bottom: solid 1px black;
+	border-right: solid 1px black;
+	background-color: rgba(0,0,0,0.2);
+	*/
+}
+#dice img {
+	padding:2px;
+}
+#board {
+	-webkit-transition: all 0.2s linear;
+	-moz-transition: all 0.2s linear;
+	-o-transition: all 0.2s linear;
+	-ms-transition: all 0.2s linear;
+	transition: all 0.2s linear;
+}
+
+.port circle {
+	stroke: #000000;
+	stroke-dasharray: 3,2;
+	stroke-width: 2px;
+	fill: none;
+}
+.port-marker circle {
+	stroke: #000000;
+	stroke-dasharray:none;
+	stroke-width: 2px;
+	fill:none;
+}
+.port-marker text {
+	font-family:"Fanwood", serif;
+	font-size:20px;
+	stroke:#000000;
+	fill:#000000;
+	dominant-baseline:central;
+	text-anchor:middle;
+}
+.port-marker line {
+	stroke: #000000;
+	stroke-width: 2px;
+	/*marker-end:url(#Triangle);*/
+}
+
+
+.port-Wool circle {
+    fill: #BFE882;
+}
+
+.port-Wheat circle, .port-Grain circle {
+    fill: #FFEF4F;
+}
+
+.port-Wood circle {
+    fill: #00932C;
+}
+
+.port-Ore circle {
+    fill: #787887;
+}
+
+.port-Brick circle {
+    fill: firebrick;
+}
+.port-any circle {
+	fill: white;
+}
+
+/* TRADE */
+
+#trade {
+	background-color: rgba(0,0,0,0.5);
+}
+#trade-inner {
+}
+/* end TRADE */
+
+.trade-view-players {
+	clear:left;
+	padding-top:20px;
+}
+
+#context-actions {
+	font-family: Verdana, Arial, Sans-Serif;
+	font-size: 12px;
+	background-color: #FDFDFD;
+	padding:10px;
+}
+
+.trade-view-players>ul>li, .trade-view-bank-resources {
+	clear:left;
+}
+.trade-view-players ul.resource-view, .trade-view-players .list-player-image, .bank-offer-image {
+	float:left;
+}
+.trade-view-players ul.resource-view {
+	padding:0 10px 0 10px;
+}
+
+ul.resource-view {
+	margin-left:15px;
+	margin-bottom:15px;
+}
+ul.resource-view>li>span>span {
+	visibility:hidden;
+}
+ul.resource-view>li>span {
+	display:block;
+	width:25px;
+	height:40px;
+	border:solid 1px white;
+	border-radius:2px;
+	text-decoration:none;
+	
+}
+ul.resource-view>li {
+	width:25px;
+	height:40px;
+	margin-top:-20px;
+	margin-left:-15px;
+	padding-top:25px;
+	padding-bottom:0px;
+	float:left;
+	
+	-webkit-transition: all 0.2s linear;
+	-moz-transition: all 0.2s linear;
+	-o-transition: all 0.2s linear;
+	-ms-transition: all 0.2s linear;
+	transition: all 0.2s linear;
+}
+ul.resource-view>li:hover, ul.resource-view>li.resource-view-resource-selected {
+	padding-top:0;
+	padding-bottom:25px;
+}
+
+.resource-view-wool {
+    background-color: #BFE882;
+}
+
+.resource-view-wheat {
+    background-color: #FFEF4F;
+}
+
+.resource-view-wood {
+    background-color: #00932C;
+}
+
+.resource-view-ore {
+    background-color: #787887;
+}
+
+.resource-view-brick {
+    background-color: firebrick;
+}
+.hex {
+	fill:#F5F5FF;
+	stroke: #CCCCCC;
+	stroke-width:0;
+}
+.hexlabel-back {
+	fill:#F5F5FF;
+	stroke:#CCCCCC;
+}
+.hex-hitarea {
+	fill:#00FF00;
+	opacity:0;
+}
+.hex-hitarea:hover {
+	opacity:0.5;
+}
+.Fields {
+    fill:#FFEF4F;
+    stroke:#DDCD2D;
+    stroke-width:1;
+}
+.Forest {
+    fill:#00932C;
+    stroke:#00710A;
+    stroke-width:1;
+}
+.Pasture {
+    fill:#BFE882;
+    stroke:#9DC770;
+    stroke-width:1;
+}
+.Hills {
+    fill:#B22222;
+    stroke:#900000;
+    stroke-width:1;
+}
+.Mountains {
+    fill:#787887;
+    stroke:#565665;
+    stroke-width:1;
+}
+.Desert {
+    fill:#fafad2;
+    stroke:#D8D8B0;
+    stroke-width:1;
+}
+
+/*
+.desert + .hexlabel-back, .desert + .hexlabel-back + .hexlabel {
+	visibility:hidden;
+}
+*/
+
+.hexlabel {
+	font-family:"Fanwood", serif;
+	font-size:26px;
+	stroke:#000000;
+	fill:#000000;
+	dominant-baseline:central;
+	text-anchor:middle;
+}
+.labelemph {
+	stroke:#FF0000;
+	fill:#FF0000;
+}
+
+.edge {
+    fill:rgb(0,255,0);
+    opacity:0;
+    stroke:rgb(0,255,0);
+    stroke-width:1;
+}
+
+.edge:hover {
+    opacity:0.5;
+}
+.vertex {
+    fill:rgb(0,255,0);
+    opacity:0;
+    stroke:#00ff00;
+    stroke-width:1;
+}
+.vertex:hover {
+    opacity:0.5;
+}
+.vertex, .edge, .hex-hitarea {
+	-webkit-transition: all 0.2s ease-in-out;
+	-moz-transition: all 0.2s ease-in-out;
+	-o-transition: all 0.2s ease-in-out;
+	-ms-transition: all 0.2s ease-in-out;
+	transition: all 0.2s ease-in-out;
+}
+
+.highlighted {
+    fill:rgba(100,255,100,0.3);
+    stroke:#AAFFAA;
+    stroke-width:1;
+}
+
+/* ACTIONS */
+
+#actions>ul {
+	margin: 0 0 0 10px;
+}
+#actions>ul>li {
+	width:25px;
+	height:40px;
+	float:left;
+	overflow:hidden;
+	margin:7px;
+}
+#actions>ul>li.action-quit { display:none; }
+
+#actions a {
+	color:#EEEEFF;
+}
+
+/* end ACTIONS */
+
+/* CHAT */
+
+#chat {
+	width:100%;
+	position:absolute;
+	bottom:0;
+	left:0;
+	height:250px;
+	background-color:rgba(0,0,0,0.5);
+}
+
+#chat>div.chat-window {
+	position:absolute;
+	top:0;
+	left:0;
+	bottom:29px;
+	width:100%;
+	overflow:auto;
+	font-family:"Fanwood";
+	font-size:16px;
+	color:white;
+}
+div.size-bar {
+	/*background-color: rgba(0,0,0,0.5); */
+	padding:0;
+	margin:0;
+	overflow:inherit;
+}
+div.size-bar-attach-left {
+	cursor: w-resize;
+	border-right: solid 1px black;
+}
+div.size-bar-attach-right {
+	cursor: e-resize;
+	border-left: solid 1px black;
+}
+div.size-bar-attach-top {
+	cursor: s-resize;
+	border-bottom: solid 1px black; 
+}
+div.size-bar-attach-bottom {
+	cursor: n-resize;
+	border-top: solid 1px black;
+}
+#chat>input[type=text] {
+	position:absolute;
+	bottom:0;
+	height:25px;
+	left:0;
+	width:100%;
+	border:solid 1px black;
+}
+
+#chat .player-brown {
+	color:#CC6600;
+	background-color:transparent;
+}
+#chat .player-blue {
+	color:#0000FF;
+	background-color:transparent;
+}
+#chat .player-green {
+	color:gb(0,255,0);
+	background-color:transparent;
+}
+#chat .player-orange {
+	color:#FF9900;
+	background-color:transparent;
+}
+#chat .player-white {
+	color:#CCCCCC;
+	background-color:transparent;
+}
+#chat .player-red {
+	color:rgb(255,0,0);
+	background-color:transparent;
+}
+
+/* end CHAT */
+
+
+/* PLAYER */
+
+.player-red {
+    fill:rgb(255,0,0);
+    background-color:rgb(255,0,0);
+    stroke:#000000;
+    stroke-width:1;
+}
+.player-green {
+    fill:rgb(0,255,0);
+    background-color:rgb(0,255,0);
+    stroke:#000000;
+    stroke-width:1;
+}
+.player-blue {
+    fill:rgb(0,0,255);
+    background-color:rgb(0,0,255);
+    stroke:#000000;
+    stroke-width:1;
+}
+.player-orange {
+    fill:#FF9900;
+    background-color:#FF9900;
+    stroke:#000000;
+    stroke-width:1;
+}
+.player-white {
+    fill:#CCC;
+    background-color:#CCC;
+    stroke:#000000;
+    stroke-width:1;
+}
+.player-brown {
+    fill:#CC6600;
+    background-color:#CC6600;
+    stroke:#000000;
+    stroke-width:1;
+}
+
+.player {
+    display:block;
+    width:250px;
+}
+
+.player-score, .player-name, .player-resource-count, .player-bonus-count, .player-resources, .player-bonuses {
+    display:block;
+    width:100%;
+    
+}
+
+
+#player-panel {
+    width: 300px;
+    float: right;
+    border: 2px solid #333;
+    margin: 8px;
+    background: url(/i/30.png);
+}
+
+#current-player {
+	display:block;
+	width:290px;
+	position:absolute;
+	top:0;
+	right:0;
+	padding:3px;
+	height:16px;
+	margin-right:10px;
+	text-align:left;
+	
+}
+
+#players {
+	/*
+	position:absolute;
+	right:0;
+	bottom:10px;
+	width:280px;
+	background:rgba(0,0,0,0.5);
+	font-family:"Fanwood";
+	*/
+	font-size:18px;
+	color:#EEEEFF;
+	padding:10px;
+}
+
+#players a {
+	color:#EEEEFF;
+	text-decoration:none;
+}
+#players li {
+	height:44px;
+	padding:5px 5px 5px 5px;
+}
+#players .list-player-active {
+	background-color:rgba(153,153,0,0.6);
+	border-radius:10px;
+}
+#players .list-player-resource-count, #players .list-player-bonus-count {
+	display:none;
+}
+
+#players .list-player-image {
+	clear:both;
+	float:left;
+}
+
+#players .list-player-red .list-player-score {
+    background-color:rgba(255,0,0,0.5);
+}
+#players .list-player-green .list-player-score {
+    background-color:rgba(0,255,0,0.5);
+}
+#players .list-player-blue .list-player-score {
+    background-color:rgba(0,0,255,0.5);
+}
+#players .list-player-orange .list-player-score {
+    background-color:rgba(255,153,0,0.5);
+}
+#players .list-player-white .list-player-score {
+    background-color:rgba(235,235,235,0.5);
+}
+#players .list-player-brown .list-player-score {
+    background-color:rgba(204,102,0,0.5);
+}
+
+
+#players .list-player-score {
+	float:right;
+	display:block;
+	height:44px;
+	width:44px;
+	font-size:40px;
+	text-align:center;
+	border:solid 1px #999999;
+	border-radius:10px;
+}
+
+#players .list-player-name {
+	font-size:20px;
+	float:left;
+	display:block;
+	width:155px;
+	overflow:hidden;
+	margin: 4px 10px 0 10px;
+}
+
+#pp {
+    background: rgba(0,0,0, 0.5);
+    font-family:"Fanwood";
+    font-size:18px;
+}
+
+#pp h3, #trade h3 {
+	clear:both;
+	color: #EEEEFF;
+	padding:10px;
+	font-size:1.2em;
+	/* border-top: solid 3px rgba(0,0,0,0.5); */
+}
+#pp h3#diceView {
+	/* border-top:none; */
+}
+
+#pp-resources {
+    margin: auto;
+    text-align: center;
+    width: 280px;
+}
+
+#game-board {
+    overflow:hidden;
+}
+
+#toolbar {
+    width: 100%;
+    background-color: #000;
+    /*padding-top: 5px;*/
+    color: #FFF;
+    height:22px;
+    font-family:Fanwood;
+    font-size:20px;
+}
+#toolbar a {
+	color:#EEEEFF;
+}
+
+.pp-res {
+    float: left;
+    width: 33px;
+    height: 75px;
+    text-align: center;
+    padding: 10px;
+    color: #EEEEFF;
+    font-family: "Fanwood";
+    font-size:1.2em;
+}
+
+.card {
+    margin-bottom: 5px;
+    width: 25px;
+    height: 40px;
+    background-color: #FFF;
+    border: 1px solid #CCC;
+
+     -moz-border-radius: 2px;
+    border-radius: 2px;
+
+    padding: 3px;
+    clear: both;
+}
+
+.card div {
+    width: 100%;
+    height: 100%;
+}
+
+
+/* end PLAYER */
+
+
+/* DICE */
+
+#diceView {
+	margin:10px;
+}
+
+/* end DICE */
+
+.popup {
+    position: absolute;
+    margin: 25% 25%;
+    top: 25%
+    left: 25%;
+    width: 50%;
+    height: 50%;
+    background-color: #FFF;
+}
+
+#footer {
+
+}
+
+.clear {
+    clear: both;
+}
+
+
+#errorMessage {
+	position:relative;
+	left:25px;
+	color: #FF7777;
+	font-size: 0.8em;
+}

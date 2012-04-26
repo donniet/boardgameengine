@@ -20,6 +20,8 @@ import java.util.Map;
 
 import javax.jdo.PersistenceManager;
 import javax.naming.BinaryRefAddr;
+import javax.servlet.RequestDispatcher;
+import javax.servlet.ServletException;
 import javax.servlet.ServletInputStream;
 import javax.servlet.http.*;
 import javax.xml.parsers.DocumentBuilder;
@@ -60,6 +62,9 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 
+import com.google.appengine.api.channel.ChannelMessage;
+import com.google.appengine.api.channel.ChannelService;
+import com.google.appengine.api.channel.ChannelServiceFactory;
 import com.google.appengine.api.users.User;
 import com.google.appengine.api.users.UserService;
 import com.google.appengine.api.users.UserServiceFactory;
@@ -104,7 +109,7 @@ public class GameServlet extends HttpServlet {
 				t.setDescription("Test");
 				t.setTypeName("Test");
 								
-				URL u = GameServlet.class.getResource("/test3.xml");
+				URL u = GameServlet.class.getResource("/pilgrims.xml");
 				URLConnection conn = u.openConnection();
 				
 				ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -143,7 +148,7 @@ public class GameServlet extends HttpServlet {
 					return;
 				}
 				
-				h.addPlayer(userService.getCurrentUser(), "green");
+				//h.addPlayer(userService.getCurrentUser(), "green");
 				h.addWatcher(userService.getCurrentUser());
 				
 				h.makePersistent();
@@ -214,7 +219,7 @@ public class GameServlet extends HttpServlet {
 					return;
 				}
 							
-				Node datamodelNode = doc.createElementNS("http://www.w3.org/2005/07/scxml", "datamodel");
+				Node datamodelNode = doc.createElementNS(Config.getInstance().getSCXMLNamespace(), "datamodel");
 				
 				for(GameStateData gsd : datamodel) {
 					ByteArrayInputStream bis = new ByteArrayInputStream(gsd.getValue());						
@@ -324,9 +329,10 @@ public class GameServlet extends HttpServlet {
 		addGetHandler("^/game/([^/]+)/", new GameUserRequestHandler() {
 			@Override
 			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
+				String gameid = matches.group(1);
 				Game h = null;
 				try {
-					h = Game.findGameById(matches.group(1));
+					h = Game.findGameById(gameid);
 				} catch (GameLoadException e1) {
 					resp.setStatus(500);
 					if(isDebug()) {
@@ -343,7 +349,40 @@ public class GameServlet extends HttpServlet {
 				}
 				
 				
-				resp.setContentType("text/plain");
+				UserService userService = UserServiceFactory.getUserService();
+				User u = userService.getCurrentUser();
+				
+				if(u != null) {
+					GameUser gu = GameUser.findOrCreateGameUserByUser(u);
+					String channelKey = gameid + gu.getHashedUserId();
+					
+					ChannelService channelService = ChannelServiceFactory.getChannelService();
+					String token = channelService.createChannel(channelKey);
+					
+					//channelService.sendMessage(new ChannelMessage(clientId, message))
+					
+					req.setAttribute("channeltoken", token);
+				}
+				else {
+					req.setAttribute("channeltoken", "");
+				}
+				
+				req.setAttribute("gameid", gameid);
+				req.setAttribute("boarddatamember", "state");
+				req.setAttribute("boarddatamemberurl", String.format("/game/%s/datamodel/state", gameid));
+				req.setAttribute("joingameurl", String.format("/game/%s/join", gameid));
+				req.setAttribute("boardactionurl", String.format("/game/%s/event/"));
+				
+				RequestDispatcher dispatcher = req.getRequestDispatcher("/WEB-INF/board.jsp");
+				
+				
+				try {
+					dispatcher.forward(req, resp);
+				} catch (ServletException e) {
+					throw new IOException(e);
+				}
+				
+				//resp.setContentType("text/plain");
 				/*
 				GaeScriptableSerializer s = new GaeScriptableSerializer(resp.getOutputStream(), scope);
 				s.Serialize(scope);
@@ -353,12 +392,13 @@ public class GameServlet extends HttpServlet {
 			}
 		});
 		
-		addPostHandler("^/game/([^/]+)/event/([^/]+)", new GameServiceRequestHandler() {
+		addPostHandler("^/game/([^/]+)/join", new GameUserRequestHandler() {
 			@Override
 			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
+				String gameid = matches.group(1);
 				Game h = null;
 				try {
-					h = Game.findGameById(matches.group(1));
+					h = Game.findGameById(gameid);
 				} catch (GameLoadException e1) {
 					resp.setStatus(500);
 					if(isDebug()) {
@@ -371,6 +411,38 @@ public class GameServlet extends HttpServlet {
 					resp.setStatus(404);
 					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
 						resp.getWriter().println("This game does not exist: " + matches.group(1));
+					return;
+				}
+				
+				UserService userService = UserServiceFactory.getUserService();
+				User u = userService.getCurrentUser();
+				
+				h.sendPlayerJoinRequest(u);	
+				
+				resp.sendRedirect(String.format("/game/%s/", gameid));
+			}
+		});
+		
+		addPostHandler("^/game/([^/]+)/event/([^/]+)", new GameServiceRequestHandler() {
+			@Override
+			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
+				String eventid = "board." + matches.group(2);
+				String gameid = matches.group(1);
+				Game h = null;
+				try {
+					h = Game.findGameById(gameid);
+				} catch (GameLoadException e1) {
+					resp.setStatus(500);
+					if(isDebug()) {
+						resp.setContentType("text/plain");
+						e1.printStackTrace(resp.getWriter());
+					}
+				}
+				
+				if(h == null) {
+					resp.setStatus(404);
+					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
+						resp.getWriter().println("This game does not exist: " + gameid);
 					return;
 				}
 				
@@ -385,7 +457,6 @@ public class GameServlet extends HttpServlet {
 				try {
 					builder = docbuilderfactory.newDocumentBuilder();
 				} catch (ParserConfigurationException e) {
-					// TODO Auto-generated catch block
 					resp.setStatus(500);
 					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
 						e.printStackTrace(resp.getWriter());
@@ -421,7 +492,7 @@ public class GameServlet extends HttpServlet {
 				}
 				
 				Node n = doc.getFirstChild();
-				Node player = doc.createElementNS("http://www.pilgrimsofnatac.com/schemas/game.xsd", "player");
+				Node player = doc.createElementNS(Config.getInstance().getGameEngineNamespace(), "player");
 				player.appendChild(doc.createTextNode(gu.getHashedUserId()));
 				
 				if(n == null) {
@@ -433,7 +504,7 @@ public class GameServlet extends HttpServlet {
 				}
 				
 				try {
-					h.getExec().triggerEvent(new TriggerEvent(matches.group(2), TriggerEvent.SIGNAL_EVENT, n));
+					h.getExec().triggerEvent(new TriggerEvent(eventid, TriggerEvent.SIGNAL_EVENT, n));
 				} catch (ModelException e) {
 					resp.setStatus(500);
 					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)

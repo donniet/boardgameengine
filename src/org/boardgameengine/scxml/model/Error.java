@@ -1,3 +1,4 @@
+package org.boardgameengine.scxml.model;
 import java.util.Collection;
 import java.util.Set;
 import java.util.logging.Logger;

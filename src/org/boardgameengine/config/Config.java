@@ -26,6 +26,8 @@ public class Config {
 	private Random random_ = null;
 	private String encoding_ = null;
 	private String digestAlgorithm_ = null;
+	private String gameEngineNamespace_ = "";
+	private String scxmlNamespace_ = "";
 	
 	public static Config getInstance() {
 		if(instance_ == null) {
@@ -46,6 +48,9 @@ public class Config {
 			
 			encoding_ = props_.getProperty("encoding");
 			digestAlgorithm_ = props_.getProperty("digestAlgorithm");
+			
+			gameEngineNamespace_ = props_.getProperty("gameenginenamespace");
+			scxmlNamespace_ = props_.getProperty("scxmlnamespace");
 			
 			random_ = new SecureRandom();
 			//dateFormat_.setCalendar(new GregorianCalendar());
@@ -73,6 +78,12 @@ public class Config {
 	}
 	public String getDigestAlgorithm() {
 		return digestAlgorithm_;
+	}
+	public String getGameEngineNamespace() { 
+		return gameEngineNamespace_;
+	}
+	public String getSCXMLNamespace() { 
+		return scxmlNamespace_;
 	}
 	public String getHash(String str, byte[] salt) {
 		try {

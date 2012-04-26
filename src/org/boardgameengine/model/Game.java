@@ -8,6 +8,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -20,6 +21,7 @@ import org.apache.commons.scxml.EventDispatcher;
 import org.apache.commons.scxml.SCXMLExecutor;
 import org.apache.commons.scxml.SCXMLListener;
 import org.apache.commons.scxml.Status;
+import org.apache.commons.scxml.TriggerEvent;
 import org.apache.commons.scxml.io.SCXMLParser;
 import org.apache.commons.scxml.model.Datamodel;
 import org.apache.commons.scxml.model.ModelException;
@@ -32,18 +34,27 @@ import org.boardgameengine.error.GameLoadException;
 import org.boardgameengine.persist.PMF;
 import org.boardgameengine.scxml.js.JsContext;
 import org.boardgameengine.scxml.js.JsEvaluator;
+import org.boardgameengine.scxml.js.JsFunctionJsonTransformer;
 import org.boardgameengine.scxml.semantics.SCXMLGameSemanticsImpl;
+import org.mozilla.javascript.Function;
+import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.ScriptableObject;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
 import org.xml.sax.ErrorHandler;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 
+import com.google.appengine.api.channel.ChannelMessage;
+import com.google.appengine.api.channel.ChannelService;
+import com.google.appengine.api.channel.ChannelServiceFactory;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.users.User;
 import com.google.appengine.api.utils.SystemProperty;
 
 import flexjson.JSONSerializer;
+import flexjson.transformer.Transformer;
 
 import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
@@ -55,10 +66,13 @@ import javax.jdo.annotations.PersistenceCapable;
 import javax.jdo.annotations.Persistent;
 import javax.jdo.annotations.PrimaryKey;
 import javax.jdo.annotations.Extension;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 
 
 @PersistenceCapable
-public class Game extends ScriptableObject {
+public class Game extends ScriptableObject implements EventDispatcher, SCXMLListener {
 	
 	@PrimaryKey
 	@Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
@@ -68,10 +82,13 @@ public class Game extends ScriptableObject {
 	private String gameid;
 		
 	@Persistent
-	private List<Key> watchers;
+	private Set<Key> watchers;
 	
 	@Persistent
 	private Key gameTypeKey;
+	
+	@NotPersistent
+	transient private boolean isDirty_ = false;
 	
 	//not persistent
 	@NotPersistent
@@ -108,6 +125,9 @@ public class Game extends ScriptableObject {
 	@Order(extensions = @Extension(vendorName="datanucleus", key="list-ordering", value="stateDate asc"))
 	private List<GameState> states;
 	
+	@NotPersistent
+	transient private Log log = LogFactory.getLog(Game.class);
+	
 	private static String nextGameId() {
 		return new BigInteger(60, Config.getInstance().getRandom()).toString(32).toUpperCase();
 	}
@@ -118,7 +138,7 @@ public class Game extends ScriptableObject {
 		states = new ArrayList<GameState>();
 		params = new HashMap<String,String>();
 		players = new ArrayList<Player>();
-		watchers = new ArrayList<Key>();
+		watchers = new HashSet<Key>();
 	}
 	
 	public Game(GameType gt) throws GameLoadException {
@@ -133,9 +153,7 @@ public class Game extends ScriptableObject {
 		//InputStream bis = new ByteArrayInputStream(gt.getStateChart());
 		InputStream bis = Game.class.getResourceAsStream("/pilgrims.xml");
 		
-		loadWarnings = new ArrayList<Exception>();
-		
-		final Log log = LogFactory.getLog(Game.class);
+		loadWarnings = new ArrayList<Exception>();		
 		
 		scxml = null;
 		try {
@@ -171,50 +189,15 @@ public class Game extends ScriptableObject {
 				log.error(errCode + ": " + errDetail);
 			}
 		};
-		EventDispatcher disp = new EventDispatcher() {
-
-			@Override
-			public void cancel(String sendId) {
-				// TODO Auto-generated method stub
-				
-			}
-
-			@Override
-			public void send(String sendId, String target, String targetType,
-					String event, Map params, Object hints, long delay,
-					List externalNodes) {
-				// TODO Auto-generated method stub
-				
-			}
-			
-		};
-		SCXMLListener listener = new SCXMLListener() {
-
-			@Override
-			public void onEntry(TransitionTarget state) {
-				// TODO Auto-generated method stub
-				
-			}
-
-			@Override
-			public void onExit(TransitionTarget state) {
-				// TODO Auto-generated method stub
-				
-			}
-
-			@Override
-			public void onTransition(TransitionTarget from,
-					TransitionTarget to, Transition transition) {
-				// TODO Auto-generated method stub
-				
-			}
-			
-		};
 		
-		exec = new SCXMLExecutor(eval, null, rep, new SCXMLGameSemanticsImpl());		
+		exec = new SCXMLExecutor(eval, null, rep, new SCXMLGameSemanticsImpl());
+		exec.addListener(scxml, this);
+		exec.setEventdispatcher(this);
 		exec.setStateMachine(scxml);
 		
 		cxt = (JsContext)exec.getRootContext();
+		//cxt.setLocal("game", this);
+		
 		
 		
 		try {
@@ -254,6 +237,61 @@ public class Game extends ScriptableObject {
 		catch(ModelException e) {
 			throw new GameLoadException("Could not start the machine.", e);
 		}
+		isDirty_ = false;
+		
+	}
+
+	@Override
+	public void cancel(String sendId) {
+		// TODO Auto-generated method stub	
+	}
+
+	@Override
+	public void send(String sendId, String target, String targetType,
+			String event, Map params, Object hints, long delay,
+			List externalNodes) {
+		if(	targetType.equals("http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor") &&
+			target.equals("http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent")) {
+			if(event.equals("game.playerJoined")) {
+				String playerid = params.get("playerid").toString();
+				String role = params.get("role").toString();
+				
+				GameUser gameUser = GameUser.findByHashedUserId(playerid);
+				
+				if(gameUser == null) {
+					//TODO: this is bad-- not sure what to do here...
+				}
+				else {
+					addPlayer(gameUser, role);
+					sendWatcherMessage(event, params);
+				}
+			}
+		}
+	}
+	
+	public static String createChannelKey(Game g, GameUser gu) {
+		return g.gameid + " " + gu.getHashedUserId();
+	}
+	public static String[] parseChannelKey(String channelkey) {
+		return channelkey.split(" ");
+	}
+	
+	public void sendWatcherMessage(String event, Map params) {
+		Map<String,Object> message = new HashMap<String,Object>();
+		message.put("event", event);
+		message.put("params", params);
+		
+		JSONSerializer json = new JSONSerializer();
+		
+		String strmessage = json.transform(new JsFunctionJsonTransformer(), Function.class, Scriptable.class).serialize(message);		
+				
+		ChannelService channelService = ChannelServiceFactory.getChannelService();
+		
+		List<GameUser> w = getWatchers();
+		for(GameUser gu : w) {
+			String channelkey = createChannelKey(this, gu);
+			channelService.sendMessage(new ChannelMessage(channelkey, strmessage));
+		}
 	}
 	
 	public GameState persistGameState() {
@@ -269,6 +307,7 @@ public class Game extends ScriptableObject {
 		states.add(gs);
 		
 		this.makePersistent();
+		isDirty_ = false;
 		
 		return gs;
 	}
@@ -348,16 +387,53 @@ public class Game extends ScriptableObject {
 		
 		return ret;
 	}
-	public void addPlayer(User user, String role) {
+	private void addPlayer(User user, String role) {
 		GameUser gu = GameUser.findOrCreateGameUserByUser(user);
 		players.add(new Player(this, gu, role));
 	}
-	public void addWatcher(User user) {
+	private void addPlayer(GameUser gameUser, String role) {
+		players.add(new Player(this, gameUser, role));
+	}
+	public boolean sendPlayerJoinRequest(User user) {
 		GameUser gu = GameUser.findOrCreateGameUserByUser(user);
-		watchers.add(gu.getKey());
+		
+		DocumentBuilderFactory docbuilderfactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder builder = null;
+		try {
+			builder = docbuilderfactory.newDocumentBuilder();
+		} catch (ParserConfigurationException e) {
+			//TODO: exception handling
+			e.printStackTrace();
+			return false;
+		}
+		Document doc = builder.newDocument();
+		
+		Node player = doc.createElementNS(Config.getInstance().getGameEngineNamespace(), "player");
+		player.appendChild(doc.createTextNode(gu.getHashedUserId()));
+		doc.appendChild(player);
+		
+		try {
+			getExec().triggerEvent(new TriggerEvent("game.playerJoin", TriggerEvent.SIGNAL_EVENT, doc));
+		} catch (ModelException e) {
+			//TODO: exception handling...
+			e.printStackTrace();
+			return false;
+		}
+		if(isDirty_) persistGameState();
+		
+		return true;
+	}
+	public boolean addWatcher(User user) {
+		GameUser gu = GameUser.findOrCreateGameUserByUser(user);
+		return watchers.add(gu.getKey());
+	}
+	public boolean removeWatcher(User user) {
+		GameUser gu = GameUser.findOrCreateGameUserByUser(user);
+		return watchers.remove(gu.getKey());
 	}
 	public void setGameType(GameType gt) {
-		this.gameTypeKey = gt.getKey();
+		if(gt != null) this.gameTypeKey = gt.getKey();
+		else this.gameTypeKey = null;
 	}
 	public GameType getGameType() {
 		return GameType.findByKey(this.gameTypeKey);
@@ -420,6 +496,23 @@ public class Game extends ScriptableObject {
 	@Override
 	public String getClassName() {
 		return "Game";
+	}
+
+	@Override
+	public void onEntry(TransitionTarget state) {
+		log.info("OnEntry: " + state.getId());			
+	}
+
+	@Override
+	public void onExit(TransitionTarget state) {
+		log.info("OnExit: " + state.getId());	
+	}
+
+	@Override
+	public void onTransition(TransitionTarget from, TransitionTarget to,
+			Transition transition) {
+		log.info("OnTransition: " + from.getId() + " -> " + to.getId() + ": [" + transition.getEvent() + "]");
+		isDirty_ = true;		
 	}
 
 

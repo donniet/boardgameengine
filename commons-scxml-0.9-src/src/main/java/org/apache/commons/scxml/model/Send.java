@@ -33,6 +33,7 @@ import org.apache.commons.scxml.SCXMLExpressionException;
 import org.apache.commons.scxml.SCXMLHelper;
 import org.apache.commons.scxml.TriggerEvent;
 import org.apache.commons.scxml.semantics.ErrorConstants;
+import org.w3c.dom.Node;
 
 /**
  * The class in this SCXML object model that corresponds to the
@@ -315,6 +316,21 @@ public class Send extends Action implements ExternalContent {
                 }
                 params.put(varName, varObj);
             }
+        }
+        else {
+        	params = new HashMap();
+        	List nodes = getExternalNodes();
+        	for(Object o : nodes) {
+        		Node n = (Node)o;
+        		if(n.getNodeName().equals("param")) {
+        			String name = n.getAttributes().getNamedItem("name").getNodeValue();
+        			String expr = n.getAttributes().getNamedItem("expr").getNodeValue();
+        			
+        			Object val = eval.eval(ctx, expr);
+        			
+        			params.put(name, val);
+        		}
+        	}
         }
         long wait = 0L;
         if (!SCXMLHelper.isStringEmpty(delay)) {

@@ -24,7 +24,19 @@ import org.apache.commons.scxml.semantics.ErrorConstants;
 import org.apache.commons.scxml.semantics.SCXMLSemanticsImpl;
 
 public class SCXMLGameSemanticsImpl extends SCXMLSemanticsImpl {
-	public void filterTransitionsSet(final Step step,
+	/**
+     * @param step
+     *            [inout]
+     * @param evtDispatcher
+     *            The {@link EventDispatcher} [in]
+     * @param errRep
+     *            ErrorReporter callback [inout]
+     * @param scInstance
+     *            The state chart instance [in]
+     * @throws ModelException
+     *             in case there is a fatal SCXML object model problem.
+     */
+    public void filterTransitionsSet(final Step step,
             final EventDispatcher evtDispatcher,
             final ErrorReporter errRep, final SCInstance scInstance)
     throws ModelException {
@@ -63,6 +75,9 @@ public class SCXMLGameSemanticsImpl extends SCXMLSemanticsImpl {
         //remove list (filtered-out list)
         List removeList = new LinkedList();
         //iterate over non-filtered transition set
+        List trueList = new LinkedList();
+        
+        
         for (Iterator iter = step.getTransitList().iterator();
                 iter.hasNext();) {
             Transition t = (Transition) iter.next();
@@ -70,9 +85,11 @@ public class SCXMLGameSemanticsImpl extends SCXMLSemanticsImpl {
             String event = t.getEvent();
             if (!eventMatch(event, allEvents)) {
                 // t has a non-empty event which is not triggered
-                removeList.add(t);  //makes no sense to eval guard cond.
+                removeList.add(t);
             }
         }
+        
+        
         // apply event + guard condition filter
         step.getTransitList().removeAll(removeList);
         // cleanup temporary structures
@@ -115,11 +132,12 @@ public class SCXMLGameSemanticsImpl extends SCXMLSemanticsImpl {
                 while (iter.hasNext()) {
                     Transition t = (Transition) iter.next();
                     TransitionTarget parent = t.getParent();
+                    
+                    //TODO: check the condition here maybe?
                     if (regions.contains(parent)) {
                         removeList.add(t);
                     } else {
-                    	// guard condition check
-                        Boolean rslt;
+                    	Boolean rslt;
                         String expr = t.getCond();
                         if (SCXMLHelper.isStringEmpty(expr)) {
                             rslt = Boolean.TRUE;
@@ -136,12 +154,14 @@ public class SCXMLGameSemanticsImpl extends SCXMLSemanticsImpl {
                                         .getMessage(), t);
                             }
                         }
-                        if (!rslt.booleanValue()) {
-                            // guard condition has not passed
-                            removeList.add(t);
+                        
+                        // if the guard condition is true, this is the only transition to check.
+                        if(!rslt.booleanValue()) {
+                        	removeList.add(t);
                         }
                         else {
                         	regions.add(parent);
+                        	trueList.add(t);
                         }
                     }
                 }
@@ -149,5 +169,44 @@ public class SCXMLGameSemanticsImpl extends SCXMLSemanticsImpl {
             // apply global and document order transition filter
             step.getTransitList().removeAll(removeList);
         }
+
+        removeList.clear();
+        // guilty until proven innocent...
+        removeList.addAll(step.getTransitList());
+        removeList.removeAll(trueList);
+        
+        //iterate over non-filtered transition set
+        for (Iterator iter = step.getTransitList().iterator(); iter.hasNext();) {
+            // guard condition check
+            Transition t = (Transition) iter.next();
+        	if(!trueList.contains(t)) {        	
+	            Boolean rslt;
+	            String expr = t.getCond();
+	            if (SCXMLHelper.isStringEmpty(expr)) {
+	                rslt = Boolean.TRUE;
+	            } else {
+	                try {
+	                    Context ctx = scInstance.getContext(t.getParent());
+	                    ctx.setLocal(NAMESPACES_KEY, t.getNamespaces());
+	                    rslt = scInstance.getEvaluator().evalCond(ctx,
+	                        t.getCond());
+	                    ctx.setLocal(NAMESPACES_KEY, null);
+	                } catch (SCXMLExpressionException e) {
+	                    rslt = Boolean.FALSE;
+	                    errRep.onError(ErrorConstants.EXPRESSION_ERROR, e
+	                            .getMessage(), t);
+	                }
+	            }
+	            
+	            // if the guard condition is true, this is the only transition to check.
+	            if(rslt.booleanValue()) {
+	            	removeList.remove(t);
+	            }
+        	}
+        }
+        
+
+        // apply event + guard condition filter
+        step.getTransitList().removeAll(removeList);
     }
 }

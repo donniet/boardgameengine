@@ -16,6 +16,8 @@ import org.apache.commons.scxml.model.ModelException;
 import org.apache.commons.scxml.model.SCXML;
 import org.boardgameengine.scxml.js.JsContext;
 import org.boardgameengine.scxml.js.JsEvaluator;
+import org.boardgameengine.scxml.model.Error;
+import org.boardgameengine.scxml.model.Script;
 import org.xml.sax.ErrorHandler;
 import org.xml.sax.helpers.DefaultHandler;
 

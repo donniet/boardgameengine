@@ -12,10 +12,20 @@ http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
 		<servlet-name>CreateGame</servlet-name>
 		<servlet-class>org.boardgameengine.CreateGame</servlet-class>
 	</servlet>
+	<servlet>
+		<servlet-name>Board</servlet-name>
+		<jsp-file>/WEB-INF/board.jsp</jsp-file>
+	</servlet>
+	
+	<servlet-mapping>
+		<servlet-name>Board</servlet-name>
+		<url-pattern>/WEB-INF/board.jsp</url-pattern>
+	</servlet-mapping>
 	<servlet-mapping>
 		<servlet-name>Game</servlet-name>
 		<url-pattern>/*</url-pattern>
 	</servlet-mapping>
+	
 	
 	<welcome-file-list>
 		<welcome-file>index.html</welcome-file>
