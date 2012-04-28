@@ -15,8 +15,10 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.jdo.PersistenceManager;
 import javax.naming.BinaryRefAddr;
@@ -53,6 +55,8 @@ import org.boardgameengine.model.GameUser;
 import org.boardgameengine.persist.PMF;
 import org.boardgameengine.scxml.js.GaeScriptableSerializer;
 import org.boardgameengine.scxml.js.JsContext;
+import org.boardgameengine.scxml.js.JsFunctionJsonTransformer;
+import org.mozilla.javascript.Function;
 import org.mozilla.javascript.NativeArray;
 import org.mozilla.javascript.Scriptable;
 import org.w3c.dom.Document;
@@ -69,6 +73,8 @@ import com.google.appengine.api.users.User;
 import com.google.appengine.api.users.UserService;
 import com.google.appengine.api.users.UserServiceFactory;
 import com.google.appengine.api.utils.SystemProperty;
+
+import flexjson.JSONSerializer;
 
 import java.util.regex.*;
 
@@ -354,7 +360,7 @@ public class GameServlet extends HttpServlet {
 				
 				if(u != null) {
 					GameUser gu = GameUser.findOrCreateGameUserByUser(u);
-					String channelKey = gameid + gu.getHashedUserId();
+					String channelKey = h.getChannelKeyForGameUser(gu);
 					
 					ChannelService channelService = ChannelServiceFactory.getChannelService();
 					String token = channelService.createChannel(channelKey);
@@ -371,7 +377,7 @@ public class GameServlet extends HttpServlet {
 				req.setAttribute("boarddatamember", "state");
 				req.setAttribute("boarddatamemberurl", String.format("/game/%s/datamodel/state", gameid));
 				req.setAttribute("joingameurl", String.format("/game/%s/join", gameid));
-				req.setAttribute("boardactionurl", String.format("/game/%s/event/"));
+				req.setAttribute("boardactionurl", String.format("/game/%s/event/", gameid));
 				
 				RequestDispatcher dispatcher = req.getRequestDispatcher("/WEB-INF/board.jsp");
 				
@@ -475,7 +481,15 @@ public class GameServlet extends HttpServlet {
 					return;
 				}
 				
-				DOMResult dr = new DOMResult(doc);
+				Node data = doc.createElementNS(Config.getInstance().getGameEngineNamespace(), "data");
+				
+				Node player = doc.createElementNS(Config.getInstance().getGameEngineNamespace(), "player");
+				player.appendChild(doc.createTextNode(gu.getHashedUserId()));
+				
+				data.appendChild(player);
+				doc.appendChild(data);
+				
+				DOMResult dr = new DOMResult(data);
 								
 				if(req.getContentLength() > 0) {
 					try {
@@ -491,36 +505,34 @@ public class GameServlet extends HttpServlet {
 					}
 				}
 				
-				Node n = doc.getFirstChild();
-				Node player = doc.createElementNS(Config.getInstance().getGameEngineNamespace(), "player");
-				player.appendChild(doc.createTextNode(gu.getHashedUserId()));
+				boolean ret = h.triggerEvent(eventid, data);
+
 				
-				if(n == null) {
-					doc.appendChild(player);
-					n = player;
+				Map<String,Object> params = new HashMap<String,Object>();
+				
+				resp.setContentType("application/json");
+				
+				if(!ret) {
+					resp.setStatus(400);
+					params.put("error", h.getErrorMessage());
 				}
 				else {
-					n.appendChild(player);
+					resp.setStatus(200);
 				}
 				
-				try {
-					h.getExec().triggerEvent(new TriggerEvent(eventid, TriggerEvent.SIGNAL_EVENT, n));
-				} catch (ModelException e) {
-					resp.setStatus(500);
-					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
-						e.printStackTrace(resp.getWriter());
-					return;
-				}
+				Set<String> state = new HashSet<String>();
 				
-				GameState gs = h.persistGameState();
-				//h.makePersistent();
-				
-				resp.setStatus(200);
-				resp.setContentType("text/plain");
 				for(Object o : h.getExec().getCurrentStatus().getStates()) {
 					State s = (State)o;
-					resp.getWriter().write(s.getId() + "\n");
+					state.add(s.getId());
 				}
+				
+				params.put("state", state.toArray(new String[0]));
+				
+				JSONSerializer json = new JSONSerializer();
+				
+				json.include("state").serialize(params, resp.getWriter());		
+				
 			}
 		});
 		

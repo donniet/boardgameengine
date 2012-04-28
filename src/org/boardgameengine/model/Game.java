@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.Writer;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -23,6 +24,7 @@ import org.apache.commons.scxml.SCXMLListener;
 import org.apache.commons.scxml.Status;
 import org.apache.commons.scxml.TriggerEvent;
 import org.apache.commons.scxml.io.SCXMLParser;
+import org.apache.commons.scxml.model.CustomAction;
 import org.apache.commons.scxml.model.Datamodel;
 import org.apache.commons.scxml.model.ModelException;
 import org.apache.commons.scxml.model.SCXML;
@@ -35,6 +37,7 @@ import org.boardgameengine.persist.PMF;
 import org.boardgameengine.scxml.js.JsContext;
 import org.boardgameengine.scxml.js.JsEvaluator;
 import org.boardgameengine.scxml.js.JsFunctionJsonTransformer;
+import org.boardgameengine.scxml.model.Error;
 import org.boardgameengine.scxml.semantics.SCXMLGameSemanticsImpl;
 import org.mozilla.javascript.Function;
 import org.mozilla.javascript.Scriptable;
@@ -90,6 +93,12 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	@NotPersistent
 	transient private boolean isDirty_ = false;
 	
+	@NotPersistent
+	transient private boolean isError_ = false;
+	
+	@NotPersistent
+	transient private String errorMessage_ = "";
+		
 	//not persistent
 	@NotPersistent
 	transient private Map<String,String> params;
@@ -153,7 +162,11 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		//InputStream bis = new ByteArrayInputStream(gt.getStateChart());
 		InputStream bis = Game.class.getResourceAsStream("/pilgrims.xml");
 		
-		loadWarnings = new ArrayList<Exception>();		
+		loadWarnings = new ArrayList<Exception>();
+		
+		List<CustomAction> customActions = new ArrayList<CustomAction>();
+		CustomAction ca = new CustomAction("http://www.pilgrimsofnatac.com/schemas/game.xsd", "error", Error.class);
+		customActions.add(ca);
 		
 		scxml = null;
 		try {
@@ -172,7 +185,7 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 				public void error(SAXParseException exception) throws SAXException {
 					throw exception;							
 				}
-			});
+			}, customActions);
 		} catch (SAXException e) {
 			throw new GameLoadException("Fatal parse error.", e);
 		} catch (ModelException e) {
@@ -250,6 +263,9 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	public void send(String sendId, String target, String targetType,
 			String event, Map params, Object hints, long delay,
 			List externalNodes) {
+		
+		boolean success = false;
+		
 		if(	targetType.equals("http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor") &&
 			target.equals("http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent")) {
 			if(event.equals("game.playerJoined")) {
@@ -263,19 +279,43 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 				}
 				else {
 					addPlayer(gameUser, role);
-					sendWatcherMessage(event, params);
+					success = true;
+					isError_ = false;
 				}
 			}
+			else if(event.equals("game.error")) {
+				errorMessage_ = params.get("message").toString();
+				log.error("[error]: " + params.get("message"));
+				isError_ = true;
+			}
+			else {
+				success = true;
+				isError_ = false;
+			}
 		}
+		
+		if(success) {
+			sendWatcherMessage(event, params);
+		}
+	}
+	
+	public boolean getIsError() {
+		return isError_;
+	}
+	public String getErrorMessage() {
+		return errorMessage_;
 	}
 	
 	public static String createChannelKey(Game g, GameUser gu) {
 		return g.gameid + " " + gu.getHashedUserId();
 	}
+	public String getChannelKeyForGameUser(GameUser gu) {
+		return createChannelKey(this, gu);
+	}
 	public static String[] parseChannelKey(String channelkey) {
 		return channelkey.split(" ");
 	}
-	
+		
 	public void sendWatcherMessage(String event, Map params) {
 		Map<String,Object> message = new HashMap<String,Object>();
 		message.put("event", event);
@@ -283,7 +323,7 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		
 		JSONSerializer json = new JSONSerializer();
 		
-		String strmessage = json.transform(new JsFunctionJsonTransformer(), Function.class, Scriptable.class).serialize(message);		
+		String strmessage = json.transform(new JsFunctionJsonTransformer(), Function.class, Scriptable.class).include("actions").serialize(message);		
 				
 		ChannelService channelService = ChannelServiceFactory.getChannelService();
 		
@@ -308,8 +348,29 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		
 		this.makePersistent();
 		isDirty_ = false;
+		isError_ = false;
 		
 		return gs;
+	}
+	
+
+	
+	public String[] getTransitionEvents() {
+		Set<String> ret = new HashSet<String>();
+		
+		Set<State> s = exec.getCurrentStatus().getStates();
+		for(State state : s) {
+			List transitions = state.getTransitionsList();
+			for(Object o : transitions) {
+				Transition t = (Transition)o;
+				String event = t.getEvent();
+				if(event != null && !event.equals("")) {
+					ret.add(event);
+				}
+			}
+		}
+		
+		return ret.toArray(new String[0]);
 	}
 	
 	public static Game findGameById(String gameid) throws GameLoadException {
@@ -395,6 +456,8 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		players.add(new Player(this, gameUser, role));
 	}
 	public boolean sendPlayerJoinRequest(User user) {
+		isError_ = false;
+		
 		GameUser gu = GameUser.findOrCreateGameUserByUser(user);
 		
 		DocumentBuilderFactory docbuilderfactory = DocumentBuilderFactory.newInstance();
@@ -419,9 +482,41 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 			e.printStackTrace();
 			return false;
 		}
-		if(isDirty_) persistGameState();
+		
+		if(isDirty_ && !isError_) {
+			persistGameState();
+		}
+		else {
+			isDirty_ = false;
+			isError_ = false;
+		}
 		
 		return true;
+	}
+	public boolean triggerEvent(String eventid, Node node) {
+		boolean ret = true;
+		
+		isError_ = false;
+		
+		try {
+			getExec().triggerEvent(new TriggerEvent(eventid, TriggerEvent.SIGNAL_EVENT, node));
+		} catch (ModelException e) {
+			if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
+				e.printStackTrace();
+			return false;
+		}
+		
+		if(isDirty_ && !isError_) {
+			persistGameState();
+		}
+		else if(isError_) {
+			ret = false;
+		}
+		
+		isDirty_ = false;
+		isError_ = false;
+		
+		return ret;
 	}
 	public boolean addWatcher(User user) {
 		GameUser gu = GameUser.findOrCreateGameUserByUser(user);

@@ -48,6 +48,11 @@ function Board(token, boardUrl, actionUrl) {
 	this.dice_ = new Array();
 	this.port_ = new Array();
 	
+	this.socketMessageHandlers_ = {
+		"board.placeVertexDevelopment": this.handlePlaceVertexDevelopment,
+		"board.placeEdgeDevelopment": this.handlePlaceEdgeDevelopment
+	};
+	
 	this.player_ = new Array();
 	
 	this.currentPlayer_ = null;
@@ -87,15 +92,130 @@ Board.prototype.handleSocketClose = function() {
 	Event.fire(this, "error", ["Communication with the server has been lost.  Please refresh your browser window.", true]);
 }
 Board.prototype.handleSocketMessage = function(msg) {
+	var data = jQuery.parseJSON(msg.data);
 	
+	console.log("socket message: " + msg.data);
+	
+	var handler = this.socketMessageHandlers_[data.event];
+	
+	if(typeof handler == "function") {
+		handler.apply(this, [data.params]);
+	}
+}
+Board.prototype.handlePlaceVertexDevelopment = function(params) {
+	var d = new Development();
+	d.count_ = 1;
+	d.type_ = params.type;
+	d.color_ = params.color;
+	
+	var vertex = null;
+	for(var i = 0; i < this.vertex_.length; i++) {
+		var v = this.vertex_[i];
+		if(v.x_ == params.x >>> 0 && v.y_ == params.y >>> 0) {
+			vertex = v;
+			break;
+		}
+	}
+	console.log("handleSocketMessage: found: " + vertex);
+	if(vertex != null) {
+		vertex.development_.push(d);
+		Event.fire(this, "placeVertexDevelopment", [vertex, d]);
+	}
+}
+Board.prototype.handlePlaceEdgeDevelopment = function(params) {
+	var d = new Development();
+	d.count_ = 1;
+	d.type_ = params.type;
+	d.color_ = params.color;
+	
+	var edge = null;
+	for(var i = 0; i < this.edge_.length; i++) {
+		var e = this.edge_[i];
+		if(e.x1_ == params.x1 >>> 0 && e.y1_ == params.y1 >>> 0 && e.x2_ == params.x2 >>> 0 && e.y2_ == params.y2 >>> 0) {
+			edge = e;
+			break;
+		}
+	}
+	console.log("handleSocketMessage: found: " + edge);
+	if(edge != null) {
+		edge.development_.push(d);
+		Event.fire(this, "placeEdgeDevelopment", [edge, d]);
+	}
+}
+
+function JsonToXML(obj, node, doc, ns, maxDepth) {
+	if(maxDepth <= 0 || !obj) return;
+		
+	for(var k in obj) {
+		var v = obj[k];
+		
+		var re = /[^A-Za-z0-9\-\_]/g;
+		var key = k.replace(re, "");
+		var f = key.substring(0,1);
+		if(f >= "0" && f <= "9") 
+			key = "_" + key;
+		
+		switch(typeof v) {
+		case "object":
+			if(v == null || typeof v.length != "number") {
+				var n = doc.createElementNS(ns, key);
+				
+				JsonToXML(v, n, doc, ns, maxDepth - 1);
+				
+				node.appendChild(n);				
+			} 
+			else {
+				for(var i = 0; i < v.length; i++) {
+					var n = doc.createElementNS(ns, key);
+					
+					JsonToXML(v[i], n, doc, ns, maxDepth - 1);
+					
+					node.appendChild(n);
+				}
+			}
+			break;
+		case "string":
+		case "boolean":
+		case "number":
+			node.setAttribute(key, v);
+			break;
+		default:
+			console.log("notsupported: " + k + "=" + v + ", " + typeof v);
+			break;			
+		}		
+	}
 }
 
 Board.prototype.sendAction = function(action, data) {
 	var responder = new Object();
 	
 	var url = this.actionUrl_ + action;
+	var ns = boardNsResolver("game");
 	
+	var serializer = new XMLSerializer();
+		
+	var doc = document.implementation.createDocument(ns, "data", null);
+	var n = doc.createElementNS(ns, "data");
+	doc.firstChild.appendChild(n);
 	
+	JsonToXML(data, n, doc, ns, 10);
+	
+	var datastring = null;
+	if(n.childNodes.length == 1) {
+		datastring = serializer.serializeToString(n.firstChild);
+	}
+	else {
+		datastring = serializer.serializeToString(n);
+	}
+	
+	jQuery.ajax({
+		type: "POST",
+		url: url,
+		data: datastring,
+		dataType: "json",
+		success: function(data,status,jqXHR) { Event.fire(responder, "load", [data, status, jqXHR]); },
+		error: function(jqXHR,status,error) { Event.fire(responder, "error", [error, status, jqXHR]); }
+	});	
 	
 	return responder;
 }
@@ -120,6 +240,7 @@ Board.prototype.load = function() {
 			}
 			else {
 				self.loadXML(boardnode.singleNodeValue);
+				self.createChannel();
 				Event.fire(self, "load", [self]);
 			}
 		},
@@ -286,7 +407,7 @@ Polytype.prototype.loadXML = function(xml) {
 function Development() {}
 Development.prototype.loadXML = function(xml) {
 	this.count_ = parseInt(xml.getAttribute("count"));
-	this.player_ = xml.getAttribute("player");
+	this.color_ = xml.getAttribute("color");
 	this.type_ = xml.getAttribute("type");
 }
 

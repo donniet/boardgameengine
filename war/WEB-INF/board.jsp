@@ -31,12 +31,29 @@ function handleLoad() {
 	
 	boardView.setBoard(board);
 	
+	Event.addListener(boardView, "vertexclick", function(vertex, evt) { 
+		var responder = board.sendAction("vertexClick", 
+			{"vertex": {"x": vertex.x_, "y": vertex.y_}}
+		); 
+		Event.addListener(responder, "error", handleActionError);
+	});
+	Event.addListener(boardView, "edgeclick", function(edge, evt) { 
+		var responder = board.sendAction("edgeClick", 
+			{"edge": {"x1": edge.x1_, "y1": edge.y1_, "x2": edge.x2_, "y2": edge.y2_}}
+		);
+		Event.addListener(responder, "error", handleActionError);
+	});
+	
 	layout.addItem(document.getElementById("header"), "top", 200);
 	layout.addItem(document.getElementById("game-board"), "center");
 	
 
 	board.load();
-	
+}
+
+function handleActionError(error, status, jqXHR) {
+	var response = jQuery.parseJSON(jqXHR.responseText);
+	console.log("sendAction Error: " + response.error);
 }
 
 $(handleLoad);

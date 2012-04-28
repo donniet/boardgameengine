@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?> 
-<scxml xmlns="http://www.w3.org/2005/07/scxml" initialstate="initializing">
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:game="http://www.pilgrimsofnatac.com/schemas/game.xsd" initialstate="initializing">
 	<datamodel>
 		<script>//<![CDATA[
 						
@@ -146,28 +146,28 @@
 				}
 				return false;
 			},
-			placeVertexDevelopment: function(board, dev, pId, x, y) {
-				log.info("placing development: " + dev + "-" + pId.text() + " " + x + "," + y);
-				var p = board.player.(playerId.text() == pId.text())[0];
+			placeVertexDevelopment: function(board, dev, col, x, y) {
+				log.info("placing development: " + dev + "-" + col + " " + x + "," + y);
+				var p = board.player.(color.text() == col)[0];
 				var pd = p.development.(@type == dev)[0];
 				var v = board.verteces.vertex.(@x==x && @y==y)[0];
 				
 				//log.info("player: " + pId + ":" + p);
 				//log.info("vertex: " + v.toXMLString());
 				
-				v.appendChild(<development type={pd.@type} player={p.playerId.text()} count="1" />);
+				v.appendChild(<development type={pd.@type} color={col} count="1" />);
 				pd.@count -= 1;
 			},
-			placeEdgeDevelopment: function(board, dev, pId, x1, y1, x2, y2) {
-				log.info("placing development: " + dev + "-" + pId.text() + " " + x1 + "," + y1 + "," + x2 + "," + y2);
-				var p = board.player.(playerId.text() == pId.text())[0];
+			placeEdgeDevelopment: function(board, dev, col, x1, y1, x2, y2) {
+				log.info("placing development: " + dev + "-" + col.text() + " " + x1 + "," + y1 + "," + x2 + "," + y2);
+				var p = board.player.(color.text() == col)[0];
 				var pd = p.development.(@type == dev)[0];
 				var e = board.edges.edge.(@x1==x1 && @y1==y1 && @x2==x2 && @y2==y2)[0];
 				
 				//log.info("player: " + pId + ":" + p);
 				//log.info("vertex: " + v.toXMLString());
 				
-				e.appendChild(<development type={pd.@type} player={p.playerId.text()} count="1" />);
+				e.appendChild(<development type={pd.@type} color={col} count="1" />);
 				pd.@count -= 1;
 			},
 			findEdge: function(board, x1, y1, x2, y2) {
@@ -191,6 +191,7 @@
 					<development type="city" count="4" />
 					<development type="road" count="15" />
 				</playerTemplate>
+				
 				<polys values="5 2 6 3 8 10 9 12 11 4 8 10 9 4 5 6 3 11">
 					<poly x="0" y="2" />
 					<poly x="3" y="1" />
@@ -276,11 +277,13 @@
 			]]></script>
 		</transition>
 		<transition event="game.startGame" cond="state.board.player &amp;&amp; state.board.player.length() &lt; state.board.minPlayers">
-			<script>log.info("You cannot start the game until you get the minimum number of players")</script>
+			<game:error message="You cannot start the game until you get the minimum number of players" />
+			<script>log.info("--You cannot start the game until you get the minimum number of players")</script>
 		</transition>
 		<transition event="game.startGame" target="createBoard" />
 		
 		<transition event="game.playerJoin" cond="state.board.player.length() + 1 &gt; state.board.maxPlayers">
+			<game:error message="The game has reached the maximum number of players." />
 			<script>log.info("The game has reached the maximum number of players.")</script>
 		</transition>
 		<transition event="game.playerJoin">
@@ -305,7 +308,7 @@
 				
 				state.board.appendChild(state.template.polytypes);
 				state.board.appendChild(<currentPlayer>0</currentPlayer>);
-								
+				
 				var tilesenum = new Array();
 				
 				for(var i = 0; i < state.template.polytypes.polytype.length(); i++) {
@@ -359,6 +362,9 @@
 				
 				delete ports;
 				
+				delete state.template;
+				delete state.playerTemplate;
+				
 			//]]></script>
 		</onentry>
 		<transition target="placement">
@@ -372,51 +378,73 @@
 		<state id="placement.buildSettlement" initial="placement.buildSettlement.build">
 			<state id="placement.buildSettlement.build">
 				<transition event="board.vertexClick" cond="_eventdata.player.text() != state.board.player[state.board.currentPlayer].playerId.text()">
+					<game:error message="You are not the current player." />
 					<script>log.error("You are not the current player.");</script>
-					<raise event="'error.platform'" />
 				</transition>
-				<transition event="board.vertexClick" cond="!util.findVertex(state.board, _eventdata.vertex.@gamens::x, _eventdata.vertex.@gamens::y)">
-					<script>log.error("Vertex does not exist: ");</script>
-					<raise event="'error.platform'" />
+				<transition event="board.vertexClick" cond="!util.findVertex(state.board, _eventdata.vertex.@x, _eventdata.vertex.@y)">
+					<game:error messageExpr="'Vertex does not exist: ' + _eventdata.vertex.@x + ',' + _eventdata.vertex.@y" />
+					<script>log.error("Vertex does not exist: " + _eventdata.vertex.@y.toXMLString());</script>
 				</transition>
-				<transition event="board.vertexClick" cond="util.hasDevelopment(util.findVertex(state.board, _eventdata.vertex.@gamens::x, _eventdata.vertex.@gamens::y))">
+				<transition event="board.vertexClick" cond="util.hasDevelopment(util.findVertex(state.board, _eventdata.vertex.@x, _eventdata.vertex.@y))">
+					<game:error message="There is already a development on the selected vertex" />
 					<script>log.error("There is already a development on the selected vertex");</script>
-					<raise event="'error.platform'" />
 				</transition>
-				<transition event="board.vertexClick" cond="util.hasAdjecentDevelopment(state.board, _eventdata.vertex.@gamens::x, _eventdata.vertex.@gamens::y)">
+				<transition event="board.vertexClick" cond="util.hasAdjecentDevelopment(state.board, _eventdata.vertex.@x, _eventdata.vertex.@y)">
+					<game:error message="There is another development on an adjecent vertex." />
 					<script>log.error("There is another development on an adjecent vertex");</script>
-					<raise event="'error.platform'" />
 				</transition>
 				<transition event="board.vertexClick" target="placement.buildSettlement.buildRoad">
 					<script>//<![CDATA[
-						util.placeVertexDevelopment(state.board, "settlement", _eventdata.player,  _eventdata.vertex.@gamens::x, _eventdata.vertex.@gamens::y);
-						state.board.appendChild(<currentVertex x={_eventdata.vertex.@gamens::x} y={_eventdata.vertex.@gamens::y} />);
+						util.placeVertexDevelopment(state.board, "settlement", state.board.player[state.board.currentPlayer].color.text(),  _eventdata.vertex.@x, _eventdata.vertex.@y);
+						state.board.appendChild(<currentVertex x={_eventdata.vertex.@x} y={_eventdata.vertex.@y} />);
 					//]]></script>
+					<send 	event="'board.placeVertexDevelopment'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.placeVertexDevelopment.send'">
+							
+						<param name="color" expr="state.board.player[state.board.currentPlayer].color.text()" />
+						<param name="x" expr="_eventdata.vertex.@x >>> 0" />
+						<param name="y" expr="_eventdata.vertex.@y >>> 0" />
+						<param name="type" expr="'settlement'" />
+					</send>
 				</transition>
 			</state>
 			
 			<state id="placement.buildSettlement.buildRoad">
 				<transition event="board.edgeClick" cond="_eventdata.player.text() != state.board.player[state.board.currentPlayer].playerId.text()">
+					<game:error message="You are not the active player." />
 					<script>log.error("You are not the current player.");</script>
-					<raise event="'error.platform'" />
 				</transition>
-				<transition event="board.edgeClick" cond="!util.findEdge(state.board, _eventdata.edge.@gamens::x1, _eventdata.edge.@gamens::y1, _eventdata.edge.@gamens::x2, _eventdata.edge.@gamens::y2)">
+				<transition event="board.edgeClick" cond="!util.findEdge(state.board, _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2)">
+					<game:error messageExpr="'Edge does not exist: ' + _eventdata.edge.toXMLString();" />
 					<script>log.error("Edge does not exist: " + _eventdata.edge.toXMLString());</script>
-					<raise event="'error.platform'" />
 				</transition>
-				<transition event="board.edgeClick" cond="(_eventdata.edge.@gamens::x1 != state.board.currentVertex.@x || _eventdata.edge.@gamens::y1 != state.board.currentVertex.@y) &amp;&amp; (_eventdata.edge.@gamens::x2 != state.board.currentVertex.@x || _eventdata.edge.@gamens::y2 != state.board.currentVertex.@y)">
+				<transition event="board.edgeClick" cond="(_eventdata.edge.@x1 != state.board.currentVertex.@x || _eventdata.edge.@y1 != state.board.currentVertex.@y) &amp;&amp; (_eventdata.edge.@x2 != state.board.currentVertex.@x || _eventdata.edge.@y2 != state.board.currentVertex.@y)">
+					<game:error message="This edge is not adjecent to the placed settlement." />
 					<script>log.error("This edge is not adjecent to the placed settlement.");</script>
-					<raise event="'error.platform'" />
 				</transition>
-				<transition event="board.edgeClick" cond="util.hasDevelopment(util.findEdge(state.board, _eventdata.edge.@gamens::x1, _eventdata.edge.@gamens::y1, _eventdata.edge.@gamens::x2, _eventdata.edge.@gamens::y2))">
+				<transition event="board.edgeClick" cond="util.hasDevelopment(util.findEdge(state.board, _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2))">
+					<game:error message="There is already a development on the selected edge." />
 					<script>log.error("There is already a development on the selected edge.");</script>
-					<raise event="'error.platform'" />
 				</transition>
 				<transition event="board.edgeClick" target="placement.buildSettlement.nextPlayerOrPhase">
 					<script>//<![CDATA[
-						util.placeEdgeDevelopment(state.board, "road", _eventdata.player, _eventdata.edge.@gamens::x1, _eventdata.edge.@gamens::y1, _eventdata.edge.@gamens::x2, _eventdata.edge.@gamens::y2);
+						util.placeEdgeDevelopment(state.board, "road", state.board.player[state.board.currentPlayer].color.text(), _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2);
 						delete state.board.currentVertex;
 					//]]></script>
+					<send 	event="'board.placeEdgeDevelopment'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.placeVertexDevelopment.send'">
+							
+						<param name="color" expr="state.board.player[state.board.currentPlayer].color.text()" />
+						<param name="x1" expr="_eventdata.edge.@x1 >>> 0" />
+						<param name="y1" expr="_eventdata.edge.@y1 >>> 0" />
+						<param name="x2" expr="_eventdata.edge.@x2 >>> 0" />
+						<param name="y2" expr="_eventdata.edge.@y2 >>> 0" />
+						<param name="type" expr="'road'" />
+					</send>
 				</transition>
 			</state>
 			
@@ -452,9 +480,14 @@
 			</transition>
 			<transition event="boardClick" target="main.checkDiceRoll">
 				<script>//<![CDATA[
-					board.dice[0] = Math.floor(Math.random() * 6.0) + 1;
-					board.dice[1] = Math.floor(Math.random() * 6.0) + 1;
-					board.diceTotal = board.dice[0] + board.dice[1];
+					delete state.board.dice;
+					
+					var die0 = Math.floor(Math.random() * 6.0) + 1;
+					var die1 = Math.floor(Math.random() * 6.0) + 1;
+					var diceTotal = die0 + die1;
+					
+					state.board.appendChild(<dice><die value={die0} /><die value={die1} /></dice>);
+					
 				//]]></script>
 			</transition>
 		</state>

@@ -77,6 +77,7 @@ BoardView.prototype.setBoard = function(board) {
 }
 
 BoardView.prototype.handlePlaceVertexDevelopment = function(vertex, development) {
+	console.log("handlePlaceVertexDevelopment");
 	if (vertex.svgEl_) {
 		this.renderVertexDevelopment(vertex, development, vertex.svgEl_);
 	}
@@ -323,13 +324,15 @@ BoardView.prototype.renderVertexDevelopment = function (vertex, vertexDevelopmen
         else svgEl.appendChild(n);
     }
 
+    console.log("development: " +  vertexDevelopment.color_ + ": " + vertexDevelopment.type_)
+    
     var model = null;
-    if (model = this.modelElements_[vertexDevelopment.model]) {
+    if (model = this.modelElements_[vertexDevelopment.type_]) {
         var newNode = model.svgElement.cloneNode(true);
         var newPos = this.c(vertex.x_, vertex.y_);
         newNode.setAttribute("x", newPos.x - model.centerPosition.x);
         newNode.setAttribute("y", newPos.y - model.centerPosition.y);
-        newNode.setAttribute("class", "vertex-development " + vertexDevelopment.player);
+        newNode.setAttribute("class", "vertex-development player-" + vertexDevelopment.color_);
         n.appendChild(newNode);
         vertexDevelopment.svgEl_ = newNode;
     }
@@ -448,7 +451,7 @@ BoardView.prototype.renderEdgeDevelopment = function (edge, edgeDevelopment, svg
     }
 
     p.setAttribute("points", points);
-    p.setAttribute("class", "edge-development " + edgeDevelopment.player);
+    p.setAttribute("class", "edge-development player-" + edgeDevelopment.color_);
     n.appendChild(p);
     edgeDevelopment.svgEl_ = p;
 }

@@ -1,11 +1,14 @@
 package org.boardgameengine.scxml.model;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.scxml.ErrorReporter;
+import org.apache.commons.scxml.Evaluator;
 import org.apache.commons.scxml.EventDispatcher;
 import org.apache.commons.scxml.SCInstance;
 import org.apache.commons.scxml.SCXMLExpressionException;
@@ -16,7 +19,8 @@ import org.apache.commons.scxml.model.State;
 
 public class Error extends Action {
 
-	private String message;
+	private String message = null;
+	private String messageexpr = null;
 	private Log log;
 	
 	public Error() {
@@ -27,13 +31,28 @@ public class Error extends Action {
 	public void execute(EventDispatcher evtDispatcher, ErrorReporter errRep,
 			SCInstance scInstance, Log appLog, Collection derivedEvents)
 			throws ModelException, SCXMLExpressionException {
-		Set states = scInstance.getExecutor().getCurrentStatus().getStates();
-		String currentState = "[unknown]";
-		if(states.size() > 0) {
-			currentState = ((State)states.iterator().next()).getId();
+		
+		String msg = "";
+		
+		if(messageexpr != null) {
+			Evaluator eval = scInstance.getEvaluator();
+			
+			msg = eval.eval(scInstance.getRootContext(), messageexpr).toString();
+		}
+		else {
+			msg = message;
 		}
 		
-		log.info("[" + currentState + "] " + message);
+		Map<String,String> params = new HashMap<String,String>();
+		
+		params.put("message", msg);
+		
+		evtDispatcher.send(
+				"game.error", 
+				"http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent", 
+				"http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor", 
+				"game.error", 
+				params, null, 0L, null);
 	}
 
 	public String getMessage() {
@@ -42,5 +61,12 @@ public class Error extends Action {
 
 	public void setMessage(String message) {
 		this.message = message;
+	}
+	public String getMessageExpr() {
+		return messageexpr;
+	}
+
+	public void setMessageExpr(String message) {
+		this.messageexpr = messageexpr;
 	}
 }
