@@ -83,6 +83,9 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	
 	@Persistent
 	private String gameid;
+	
+	@Persistent
+	private Key owner;
 		
 	@Persistent
 	private Set<Key> watchers;
@@ -397,6 +400,25 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	public SCXMLExecutor getExec() {
 		return exec;
 	}
+	public GameUser getOwner() {
+		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
+		Query q = pm.newQuery(GameUser.class);
+		q.setFilter("key == keyIn");
+		q.declareParameters(Key.class.getName() + " keyIn");
+		
+		List<GameUser> ret = (List<GameUser>)q.execute(owner);
+		
+		if(ret.size() > 0) {
+			return ret.get(0);
+		}
+		else {
+			return null;
+		}
+	}
+	public void setOwner(User u) {
+		GameUser gu = GameUser.findOrCreateGameUserByUser(u);
+		owner = gu.getKey();
+	}
 	
 	public List<GameHistoryEvent> getEvents() {
 		return events;
@@ -454,6 +476,49 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	}
 	private void addPlayer(GameUser gameUser, String role) {
 		players.add(new Player(this, gameUser, role));
+	}
+
+	public boolean sendStartGameRequest(User user) {
+		isError_ = false;
+		
+		GameUser gu = GameUser.findOrCreateGameUserByUser(user);
+		
+		if(gu.getKey().compareTo(owner) != 0) {
+			return false;
+		}
+		
+		DocumentBuilderFactory docbuilderfactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder builder = null;
+		try {
+			builder = docbuilderfactory.newDocumentBuilder();
+		} catch (ParserConfigurationException e) {
+			e.printStackTrace();
+			return false;
+		}
+		Document doc = builder.newDocument();
+		
+		Node player = doc.createElementNS(Config.getInstance().getGameEngineNamespace(), "player");
+		player.appendChild(doc.createTextNode(gu.getHashedUserId()));
+		doc.appendChild(player);
+				
+		try {
+			getExec().triggerEvent(new TriggerEvent("game.startGame", TriggerEvent.SIGNAL_EVENT, doc));
+		} catch (ModelException e) {
+			e.printStackTrace();
+			return false;
+		}
+		
+		if(isDirty_ && !isError_) {
+			persistGameState();
+			isDirty_ = false;
+			isError_ = false;
+			return true;
+		}
+		else {
+			isDirty_ = false;
+			isError_ = false;
+			return false;
+		}
 	}
 	public boolean sendPlayerJoinRequest(User user) {
 		isError_ = false;

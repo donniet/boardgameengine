@@ -11,7 +11,7 @@
 
 body {
     margin: 0px;
-    background: url(/i/wood_100.jpg);
+    /* background: url(/i/wood_100.jpg); */
     font-family: "Fanwood";
     overflow:hidden;
 }

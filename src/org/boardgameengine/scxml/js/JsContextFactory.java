@@ -1,4 +1,5 @@
 package org.boardgameengine.scxml.js;
+import org.boardgameengine.config.Config;
 import org.mozilla.javascript.Callable;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Scriptable;
@@ -6,9 +7,7 @@ import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.ContextFactory;
 
 
-public class JsContextFactory extends ContextFactory {
-	private static final int MAX_RUNTIME = 10;
-	
+public class JsContextFactory extends ContextFactory {	
 	private static class MyContext extends Context {
 		long startTime;
 	}
@@ -25,9 +24,10 @@ public class JsContextFactory extends ContextFactory {
 	}
 	
 	protected void observeInstructionCount(Context cx, int instructionCount) {
+		
 		MyContext mcx = (MyContext)cx;
 		long currentTime = System.currentTimeMillis();
-		if(currentTime - mcx.startTime > MAX_RUNTIME * 1000) {
+		if(currentTime - mcx.startTime > Config.getInstance().getMaxScriptRuntime() * 1000) {
 			throw new java.lang.Error();
 		}
 	}

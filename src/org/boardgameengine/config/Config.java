@@ -28,6 +28,7 @@ public class Config {
 	private String digestAlgorithm_ = null;
 	private String gameEngineNamespace_ = "";
 	private String scxmlNamespace_ = "";
+	private int maxScriptRuntime_ = 1;
 	
 	public static Config getInstance() {
 		if(instance_ == null) {
@@ -51,6 +52,8 @@ public class Config {
 			
 			gameEngineNamespace_ = props_.getProperty("gameenginenamespace");
 			scxmlNamespace_ = props_.getProperty("scxmlnamespace");
+			
+			maxScriptRuntime_ = Integer.parseInt(props_.getProperty("maxScriptRuntime"));
 			
 			random_ = new SecureRandom();
 			//dateFormat_.setCalendar(new GregorianCalendar());
@@ -103,5 +106,8 @@ public class Config {
 			return null;
 		}
 	}
-	
+
+	public int getMaxScriptRuntime() {
+		return maxScriptRuntime_;
+	}	
 }

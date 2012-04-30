@@ -1,4 +1,47 @@
 
+function JsonToXML(obj, node, doc, ns, maxDepth) {
+	if(maxDepth <= 0 || !obj) return;
+		
+	for(var k in obj) {
+		var v = obj[k];
+		
+		var re = /[^A-Za-z0-9\-\_]/g;
+		var key = k.replace(re, "");
+		var f = key.substring(0,1);
+		if(f >= "0" && f <= "9") 
+			key = "_" + key;
+		
+		switch(typeof v) {
+		case "object":
+			if(v == null || typeof v.length != "number") {
+				var n = doc.createElementNS(ns, key);
+				
+				JsonToXML(v, n, doc, ns, maxDepth - 1);
+				
+				node.appendChild(n);				
+			} 
+			else {
+				for(var i = 0; i < v.length; i++) {
+					var n = doc.createElementNS(ns, key);
+					
+					JsonToXML(v[i], n, doc, ns, maxDepth - 1);
+					
+					node.appendChild(n);
+				}
+			}
+			break;
+		case "string":
+		case "boolean":
+		case "number":
+			node.setAttribute(key, v);
+			break;
+		default:
+			console.log("notsupported: " + k + "=" + v + ", " + typeof v);
+			break;			
+		}		
+	}
+}
+
 function getTextContent(xml) {
 	if(!xml) return null;
 	
@@ -50,7 +93,8 @@ function Board(token, boardUrl, actionUrl) {
 	
 	this.socketMessageHandlers_ = {
 		"board.placeVertexDevelopment": this.handlePlaceVertexDevelopment,
-		"board.placeEdgeDevelopment": this.handlePlaceEdgeDevelopment
+		"board.placeEdgeDevelopment": this.handlePlaceEdgeDevelopment,
+		"board.diceRolled": this.handleDiceRoll
 	};
 	
 	this.player_ = new Array();
@@ -102,6 +146,17 @@ Board.prototype.handleSocketMessage = function(msg) {
 		handler.apply(this, [data.params]);
 	}
 }
+
+Board.prototype.handleDiceRoll = function(params) {
+	this.dice_ = new Array();
+	var values = params.diceValues.split(" ");
+	for(var i = 0; i < values.length; i++) {
+		this.dice_.push(parseInt(values[i]));
+	}
+	console.log("handleDiceRoll: " + (this.dice_[0] + this.dice_[1]));
+	Event.fire(this, "diceRolled");
+}
+
 Board.prototype.handlePlaceVertexDevelopment = function(params) {
 	var d = new Development();
 	d.count_ = 1;
@@ -143,48 +198,7 @@ Board.prototype.handlePlaceEdgeDevelopment = function(params) {
 	}
 }
 
-function JsonToXML(obj, node, doc, ns, maxDepth) {
-	if(maxDepth <= 0 || !obj) return;
-		
-	for(var k in obj) {
-		var v = obj[k];
-		
-		var re = /[^A-Za-z0-9\-\_]/g;
-		var key = k.replace(re, "");
-		var f = key.substring(0,1);
-		if(f >= "0" && f <= "9") 
-			key = "_" + key;
-		
-		switch(typeof v) {
-		case "object":
-			if(v == null || typeof v.length != "number") {
-				var n = doc.createElementNS(ns, key);
-				
-				JsonToXML(v, n, doc, ns, maxDepth - 1);
-				
-				node.appendChild(n);				
-			} 
-			else {
-				for(var i = 0; i < v.length; i++) {
-					var n = doc.createElementNS(ns, key);
-					
-					JsonToXML(v[i], n, doc, ns, maxDepth - 1);
-					
-					node.appendChild(n);
-				}
-			}
-			break;
-		case "string":
-		case "boolean":
-		case "number":
-			node.setAttribute(key, v);
-			break;
-		default:
-			console.log("notsupported: " + k + "=" + v + ", " + typeof v);
-			break;			
-		}		
-	}
-}
+Board.prototype.getDice = function() { return this.dice_; };
 
 Board.prototype.sendAction = function(action, data) {
 	var responder = new Object();
@@ -268,7 +282,19 @@ Board.prototype.loadXML = function(xml) {
 				y: parseInt(n.getAttribute("y"))
 			};
 		},
+		"dice": this.loadDice
 	}, this);
+}
+
+Board.prototype.loadDice = function(xml) {
+	this.dice_ = new Array();
+	
+	forChildNodes(xml, {
+		"die": function(n) {
+			this.dice_.push(parseInt(n.getAttribute("value")));
+		}
+	}, this);
+	
 }
 
 Board.prototype.loadPolytypes = function(xml) {

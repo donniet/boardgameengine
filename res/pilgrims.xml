@@ -8,17 +8,33 @@
 		default xml namespace = g;
 		
 		util = {
+			concatenateNodeValues: function(nodeList, child, delim) {
+				if(typeof delim != "string") delim = " ";
+				
+				var ret = "";
+				for(var i = 0; i < nodeList.length; i++) {
+					ret += nodeList[0][child].toString();
+					if(i < nodeList.length - 1) ret += delim;
+				}
+				
+				return ret;
+			},
 			initializeAndAddPlayer: function(playerId, board, playerTemplate) {
 				var colors = playerTemplate.@colors.text().toString().split(" ");
 				log.info(playerTemplate.@colors.text().toString());
-				log.info(state.board.player.length());
-				var playerColor = colors[state.board.player.length()];
+				log.info(board.player.length());
+				var playerColor = colors[board.player.length()];
 				log.info(playerColor);
 				var player = <player><playerId>{playerId}</playerId><color>{playerColor}</color></player>;
 				log.info(player.toXMLString());
 					
 				for(var i = 0; i < playerTemplate.*.length(); i++) {
 					player.appendChild(playerTemplate.child(i));
+				}
+				player.appendChild(<resources/>);
+				for(var i = 0; i < board.resources.resource.length(); i++) {
+					var res = board.resources.resource[i];
+					player.resources.appendChild(<resource type={res.@type} count="0" />);
 				}
 				
 				log.info("about to add a player: " + state.board);
@@ -27,7 +43,6 @@
 								
 				log.info("adding player: " + playerId);
 				log.info("done players: " + state.board);
-				log.info("color: " + state.board.player.(playerId=="l-WkcSZ4vh-1phKasmf-fZbfLXQ").color.text());
 			},
 			polyCorners: function(x, y) {
 				x = x >>> 0;
@@ -132,6 +147,26 @@
 					ret += board.verteces.vertex.(@x == edge.@x1 && @y == edge.@y1);
 				}
 				return ret;
+			},
+			adjecentPolyFromVertex: function(board, x, y) {
+				var ret = <></>;
+				
+				for(var i = 0; i < board.polys.poly.length; i++) {
+					var p = board.polys.poly[i];
+					var corners = polyCorners(p.@x, p.@y);
+					
+					for(var j = 0; j < corners.length; j++) {
+						var c = corners[j];
+						
+						if(c.@x == x && c.@y == y) {
+							ret += p;
+							break;
+						}
+					}
+				}
+				
+				return ret;
+				
 			},
 			adjecentVertexFromEdge: function(board, x1, y1, x2, y2) {
 				
@@ -262,7 +297,9 @@
 				state.board.appendChild(<maxPlayers>{state.template.maxPlayers.text()}</maxPlayers>);
 				state.board.appendChild(<polys/>);
 				state.board.appendChild(<verteces/>);
-				state.board.appendChild(<edges/>);				
+				state.board.appendChild(<edges/>);		
+				state.board.appendChild(state.template.resources);	
+				state.board.appendChild(state.template.polytypes);	
 				
 			//]]></script>
 		</onentry>
@@ -270,17 +307,19 @@
 	</state>
 	
 	<state id="waitingForPlayers">
-		<transition cond="state.board.player &amp;&amp; state.board.player.length() == state.board.maxPlayers" target="createBoard">
+		<transition cond="state.board.player.length() == state.board.maxPlayers" target="createBoard">
 			<script>//<![CDATA[
 				log.info("Max Players: " + state.board.maxPlayers);
 				log.info("State.board.player.length(): " + state.board.player.length());
 			]]></script>
 		</transition>
-		<transition event="game.startGame" cond="state.board.player &amp;&amp; state.board.player.length() &lt; state.board.minPlayers">
+		<transition event="game.startGame" cond="state.board.player &amp;&amp; state.board.player.length() &lt; parseInt(state.board.minPlayers)">
 			<game:error message="You cannot start the game until you get the minimum number of players" />
 			<script>log.info("--You cannot start the game until you get the minimum number of players")</script>
 		</transition>
-		<transition event="game.startGame" target="createBoard" />
+		<transition event="game.startGame" target="createBoard">
+			<script>log.info("creating board...");</script>
+		</transition>
 		
 		<transition event="game.playerJoin" cond="state.board.player.length() + 1 &gt; state.board.maxPlayers">
 			<game:error message="The game has reached the maximum number of players." />
@@ -306,7 +345,6 @@
 			<script>//<![CDATA[
 				util.instantiateTemplate(state.board, state.template);
 				
-				state.board.appendChild(state.template.polytypes);
 				state.board.appendChild(<currentPlayer>0</currentPlayer>);
 				
 				var tilesenum = new Array();
@@ -323,10 +361,14 @@
 				
 				var polyvalues = state.template.polys.@values.split(" ");
 				
-				for(var i = 0, j = 0; i < state.board.polys.poly.length() && i < tilesenum.length && j < polyvalues.length; i++) {
+				for(var i = 0, j = 0; i < state.board.polys.poly.length() && i < tilesenum.length; i++) {
 					var p = state.board.polys.poly[i];
 					var t = tilesenum[i];
-					var v = polyvalues[j];
+					var v = null;
+					
+					if(j < polyvalues.length) {
+						v = polyvalues[j];
+					}
 					
 					var prod = state.board.polytypes.polytype.(@type==t).@produces;
 					//log.info("prod: " + t + " -> " + prod);
@@ -395,8 +437,23 @@
 				</transition>
 				<transition event="board.vertexClick" target="placement.buildSettlement.buildRoad">
 					<script>//<![CDATA[
-						util.placeVertexDevelopment(state.board, "settlement", state.board.player[state.board.currentPlayer].color.text(),  _eventdata.vertex.@x, _eventdata.vertex.@y);
+						var player = state.board.player[state.board.currentPlayer];
+						player.appendChild(<resources/>);
+						
+						util.placeVertexDevelopment(state.board, "settlement", player.color.text(),  _eventdata.vertex.@x, _eventdata.vertex.@y);
 						state.board.appendChild(<currentVertex x={_eventdata.vertex.@x} y={_eventdata.vertex.@y} />);
+						if(state.board.firstPlacement != "true") {
+							var adjecentPolys = util.adjecentPolyFromVertex(_eventdata.vertex.@x, _eventdata.vertex.@y);
+							for(var i = 0; i < adjecentPolys.length; i++) {
+								var p = adjecentPolys[i];
+								var pt = state.board.polytypes.polytype.(@type == p.@type);
+								
+								if(pt.@produces && pt.@produces != "") {
+									var pr = player.resources.resource.(@type == pt.@produces);
+									pr.@count = parseInt(pr.@count) + 1;
+								}
+							}
+						}
 					//]]></script>
 					<send 	event="'board.placeVertexDevelopment'" 
 							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
@@ -475,41 +532,48 @@
 	</state>
 	<state id="main" initial="main.rollDice">
 		<state id="main.rollDice">
-			<transition event="boardClick" cond="_event.data.player != currentPlayer">
+			<transition event="board.diceClick" cond="_event.data.player != currentPlayer">
+				<game:error message="You are not the current player." />
 				<script>log.error("You are not the current player.");</script>
 			</transition>
-			<transition event="boardClick" target="main.checkDiceRoll">
+			<transition event="board.diceClick" target="main.checkDiceRoll">
 				<script>//<![CDATA[
 					delete state.board.dice;
 					
 					var die0 = Math.floor(Math.random() * 6.0) + 1;
 					var die1 = Math.floor(Math.random() * 6.0) + 1;
-					var diceTotal = die0 + die1;
 					
 					state.board.appendChild(<dice><die value={die0} /><die value={die1} /></dice>);
 					
 				//]]></script>
+				<send 	event="'board.diceRolled'" 
+						target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+						targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+						id="'board.diceRolled.send'">
+					
+					<param name="diceValues" expr="util.concatentateNodeValues(state.board.dice.die, '@value')" />
+				</send>
 			</transition>
 		</state>
 		<state id="main.checkDiceRoll">
-			<transition cond="board.diceTotal == 7" target="main.handleRollOf7" />
+			<transition cond="parseInt(state.board.dice.die[0].@value) + parseInt(state.board.dice.die[1].@value) == 7" target="main.handleRollOf7" />
 			<transition target="main.distributeResources" />
 		</state>
 		<state id="main.handleRollOf7" initial="main.handleRollOf7.discard">
 			<state id="main.handleRollOf7.discard">
 				<onentry>
+					<script>//<![CDATA[
+						log.info("Discarding...");
+					//]]></script>
 				</onentry>
 			</state>
 		</state>
 		<state id="main.distributeResources">
 			<onentry>
-				// distribute resources
+				<script>//<![CDATA[
+					log.info("Distributing Resources...");
+				//]]></script>
 			</onentry>
-			<transition target="main.trading" />
-		</state>
-		
-		<state id="main.trading">
-			
 		</state>
 	</state>
 </scxml>

@@ -155,6 +155,8 @@ public class GameServlet extends HttpServlet {
 				}
 				
 				//h.addPlayer(userService.getCurrentUser(), "green");
+				
+				h.setOwner(userService.getCurrentUser());				
 				h.addWatcher(userService.getCurrentUser());
 				
 				h.makePersistent();
@@ -378,6 +380,7 @@ public class GameServlet extends HttpServlet {
 				req.setAttribute("boarddatamemberurl", String.format("/game/%s/datamodel/state", gameid));
 				req.setAttribute("joingameurl", String.format("/game/%s/join", gameid));
 				req.setAttribute("boardactionurl", String.format("/game/%s/event/", gameid));
+				req.setAttribute("startgameurl", String.format("/game/%s/start", gameid));
 				
 				RequestDispatcher dispatcher = req.getRequestDispatcher("/WEB-INF/board.jsp");
 				
@@ -395,6 +398,40 @@ public class GameServlet extends HttpServlet {
 				*/
 				
 				
+			}
+		});
+		
+		addPostHandler("^/game/([^/]+)/start", new GameUserRequestHandler() {
+			@Override
+			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
+				String gameid = matches.group(1);
+				Game h = null;
+				try {
+					h = Game.findGameById(gameid);
+				} catch (GameLoadException e1) {
+					resp.setStatus(500);
+					if(isDebug()) {
+						resp.setContentType("text/plain");
+						e1.printStackTrace(resp.getWriter());
+					}
+				}
+				
+				if(h == null) {
+					resp.setStatus(404);
+					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
+						resp.getWriter().println("This game does not exist: " + matches.group(1));
+					return;
+				}
+				
+				UserService userService = UserServiceFactory.getUserService();
+				User u = userService.getCurrentUser();
+				
+				if(h.sendStartGameRequest(u)) {
+					resp.sendRedirect(String.format("/game/%s/", gameid));
+				}
+				else {
+					resp.setStatus(400);
+				}
 			}
 		});
 		

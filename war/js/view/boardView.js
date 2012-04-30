@@ -100,6 +100,8 @@ BoardView.prototype.handleRemoveHexDevelopment = function(hex, development) {
 }
 
 BoardView.prototype.render = function() {
+	var self = this;
+	
 	this.diceElement_ = $("<div/>");
 	this.diceElement_.css("position", "absolute");
 	var pos = this.dicePosition_.split(" ");
@@ -110,6 +112,11 @@ BoardView.prototype.render = function() {
 	this.boardContainer_.append(this.diceElement_);
 	this.diceView_ = new DiceView(this.diceElement_);
 	this.diceView_.setBoard(this.board_);	
+	this.diceView_.render();
+	Event.addListener(this.diceView_, "click", function() {
+		console.log("boardview diceclick handler");
+		Event.fire(self, "diceclick", []);
+	})
 	
 	var svg = document.createElementNS(this.svgns_, "svg");
 	svg.setAttribute("version", "1.1");

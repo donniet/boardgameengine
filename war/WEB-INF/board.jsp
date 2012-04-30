@@ -43,6 +43,11 @@ function handleLoad() {
 		);
 		Event.addListener(responder, "error", handleActionError);
 	});
+	Event.addListener(boardView, "diceclick", function() {
+		console.log("board.jsp diceclick handler");
+		var responder = board.sendAction("diceClick");
+		Event.addListener(responder, "error", handleActionError);
+	});
 	
 	layout.addItem(document.getElementById("header"), "top", 200);
 	layout.addItem(document.getElementById("game-board"), "center");
@@ -67,6 +72,10 @@ $(handleLoad);
 
 <form action="${joingameurl}" method="post">
 	<input type="submit" value="JOIN" />
+</form>
+
+<form action="${startgameurl}" method="post">
+	<input type="submit" value="START" />
 </form>
 </div>
 <div id="game-board"></div>
