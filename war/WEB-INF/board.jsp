@@ -51,7 +51,10 @@ function handleLoad() {
 	
 	layout.addItem(document.getElementById("header"), "top", 200);
 	layout.addItem(document.getElementById("game-board"), "center");
-	
+
+	$('#endTurnButton').click(function() {
+		board.sendAction("endTurn");
+	});
 
 	board.load();
 }
@@ -77,6 +80,9 @@ $(handleLoad);
 <form action="${startgameurl}" method="post">
 	<input type="submit" value="START" />
 </form>
+
+<input type="submit" value="END TURN" id="endTurnButton" />
+
 </div>
 <div id="game-board"></div>
 

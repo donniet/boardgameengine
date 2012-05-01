@@ -267,6 +267,8 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 			String event, Map params, Object hints, long delay,
 			List externalNodes) {
 		
+		log.info(String.format("Send Event '%s'", event));
+		
 		boolean success = false;
 		
 		if(	targetType.equals("http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor") &&

@@ -151,7 +151,8 @@ Board.prototype.handleDiceRoll = function(params) {
 	this.dice_ = new Array();
 	var values = params.diceValues.split(" ");
 	for(var i = 0; i < values.length; i++) {
-		this.dice_.push(parseInt(values[i]));
+		if(values[i] != "")
+			this.dice_.push(parseInt(values[i]));
 	}
 	console.log("handleDiceRoll: " + (this.dice_[0] + this.dice_[1]));
 	Event.fire(this, "diceRolled");
