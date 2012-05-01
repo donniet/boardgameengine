@@ -16,6 +16,7 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,6 +45,7 @@ import org.apache.commons.scxml.io.SCXMLParser;
 import org.apache.commons.scxml.model.ModelException;
 import org.apache.commons.scxml.model.SCXML;
 import org.apache.commons.scxml.model.State;
+import org.apache.juli.logging.LogFactory;
 import org.boardgameengine.config.Config;
 import org.boardgameengine.error.GameLoadException;
 import org.boardgameengine.model.Game;
@@ -56,6 +58,7 @@ import org.boardgameengine.persist.PMF;
 import org.boardgameengine.scxml.js.GaeScriptableSerializer;
 import org.boardgameengine.scxml.js.JsContext;
 import org.boardgameengine.scxml.js.JsFunctionJsonTransformer;
+import org.mortbay.log.Log;
 import org.mozilla.javascript.Function;
 import org.mozilla.javascript.NativeArray;
 import org.mozilla.javascript.Scriptable;
@@ -166,6 +169,7 @@ public class GameServlet extends HttpServlet {
 			}
 		});
 		
+		/*
 		addGetHandler("^/game/([^/]+)/datamodel", new GameServiceRequestHandler() {
 			@Override
 			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
@@ -261,13 +265,25 @@ public class GameServlet extends HttpServlet {
 			}
 			
 		});
+		*/
 		
 		addGetHandler("^/game/([^/]+)/datamodel/([^/]+)", new GameServiceRequestHandler() {
 			@Override
 			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
+				String gameid = matches.group(1);
+				String dataid = matches.group(2);
+				
+				String userid = "";
+				
+				UserService userService = UserServiceFactory.getUserService();
+				if(userService.getCurrentUser() != null) {
+					GameUser gu = GameUser.findOrCreateGameUserByUser(userService.getCurrentUser());
+					userid = gu.getHashedUserId();
+				}
+				
 				Game h = null;
 				try {
-					h = Game.findGameById(matches.group(1));
+					h = Game.findGameById(gameid);
 				} catch (GameLoadException e1) {
 					resp.setStatus(500);
 					if(isDebug()) {
@@ -297,39 +313,63 @@ public class GameServlet extends HttpServlet {
 				
 				List<GameStateData> datamodel = gs.getDatamodel();
 				
-				for(GameStateData gsd : datamodel) {
-					if(matches.group(2).equals(gsd.getId())) {
-						TransformerFactory factory = TransformerFactory.newInstance();
-						Transformer trans = null;
-						try {
-							trans = factory.newTransformer();
-						} catch (TransformerConfigurationException e) {
-							trans = null;
-							resp.setStatus(404);
-							if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
-								e.printStackTrace(resp.getWriter());
-							return;
-						}
-						
-						ByteArrayInputStream bis = new ByteArrayInputStream(gsd.getValue());						
-						
-						try {
-							trans.transform(new StreamSource(bis), new StreamResult(resp.getOutputStream()));
-							resp.setContentType("application/xml");
-						} catch (TransformerException e) {
-							resp.setStatus(404);
-							if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
-								e.printStackTrace(resp.getWriter());
-							return;
-						}
-						return;
+				GameStateData gsd = null;
+				
+				for(Iterator<GameStateData> i = datamodel.iterator(); i.hasNext();) {
+					gsd = i.next();
+					if(dataid.equals(gsd.getId())) {
+						break;
+					}
+					else {
+						gsd = null;
 					}
 				}
 				
-				resp.setStatus(404);
-				if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
-					resp.getWriter().println("Dataitem: '" + matches.group(2) + "' not found in this game: " + matches.group(1));
-				return;
+				if(gsd == null) {
+					resp.setStatus(404);
+					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
+						resp.getWriter().println("Dataitem: '" + matches.group(2) + "' not found in this game: " + matches.group(1));
+					return;
+				}
+				
+				TransformerFactory factory = TransformerFactory.newInstance();
+				Transformer trans = null;
+				
+				URL resu = GameServlet.class.getResource("/datamodeltransform.xslt");
+				
+				org.apache.juli.logging.Log log = LogFactory.getLog(GameServlet.class);
+				
+				log.info("transformer: " + resu.toString());
+				
+				try {
+					trans = factory.newTransformer(new StreamSource(GameServlet.class.getResourceAsStream("/datamodeltransform.xslt")));
+				} catch (TransformerConfigurationException e) {
+					trans = null;
+					resp.setStatus(404);
+					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
+						e.printStackTrace(resp.getWriter());
+					return;
+				}
+				
+				if(trans == null) {
+					resp.setStatus(500);
+					//resp.getWriter().write("Could not load datamodel transform");
+					return;
+				}
+				
+				trans.setParameter("playerId", userid);				
+				
+				ByteArrayInputStream bis = new ByteArrayInputStream(gsd.getValue());
+								
+				try {
+					trans.transform(new StreamSource(bis), new StreamResult(resp.getOutputStream()));
+					resp.setContentType("application/xml");
+				} catch (TransformerException e) {
+					resp.setStatus(404);
+					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
+						e.printStackTrace(resp.getWriter());
+					return;
+				}				
 			}
 			
 		});

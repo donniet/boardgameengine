@@ -31,7 +31,7 @@
 				for(var i = 0; i < playerTemplate.*.length(); i++) {
 					player.appendChild(playerTemplate.child(i));
 				}
-				player.appendChild(<resources/>);
+				player.appendChild(<resources privateOf="../game:playerId/text()" />);
 				for(var i = 0; i < board.resources.resource.length(); i++) {
 					var res = board.resources.resource[i];
 					player.resources.appendChild(<resource type={res.@type} count="0" />);
@@ -55,31 +55,6 @@
 					<point x={1 + x} y={2 + y} />
 					<point x={0 + x} y={1 + y} />
 					</>;
-			},
-			uhash: function(obj) {
-				if(!obj) return null;
-				else if(obj.localName() == "vertex" || obj.localName == "poly") 
-					return util._uhashVert(obj);
-				else if(obj.localName() == "edge")
-					return util._uhashEdge(obj);
-				else
-					return null;
-			},
-			_uhashVert: function(obj) {
-				return obj.@x + "," + obj.@y;
-			},
-			_uhashEdge: function(obj) {
-				var x1 = obj.@x1, y1 = obj.@y1, x2 = obj.@x2, y2 = obj.@y2;
-				
-				if(x1 > x2 || (x1 == x2 && y1 > y2)) {
-					var tx = x1;
-					var ty = y1;
-					x1 = x2;
-					y1 = y2;
-					x2 = tx;
-					y2 = ty;
-				}
-				return x1 + "," + y1 + "," + x2 + "," + y2;
 			},
 			instantiateTemplate: function(board, template) {				
 				for(var i = 0; i < template.polys.poly.length(); i++) {
@@ -441,8 +416,7 @@
 				<transition event="board.vertexClick" target="placement.buildSettlement.buildRoad">
 					<script>//<![CDATA[
 						var player = state.board.player[state.board.currentPlayer];
-						player.appendChild(<resources/>);
-						
+												
 						util.placeVertexDevelopment(state.board, "settlement", player.color.text(),  _eventdata.vertex.@x, _eventdata.vertex.@y);
 						state.board.appendChild(<currentVertex x={_eventdata.vertex.@x} y={_eventdata.vertex.@y} />);
 						if(state.board.firstPlacement != "true") {
