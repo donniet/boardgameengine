@@ -1,0 +1,26 @@
+Some information about building game scxml files
+
+DATAMODEL PRIVACY
+
+* privateOf is an attribute that accepts an xpath expression to make a portion of the datamodel private.
+
+EXAMPLE DATAMODEL:
+
+<state 
+	xmlns="http://www.w3.org/2005/07/scxml" 
+	xmlns:game="http://www.pilgrimsofnatac.com/schemas/game.xsd">
+	
+	<player>
+		<playerId>0000000</playerId>
+		<cards privateOf="../game:playerId/text()">
+			<card value="king" suit="hearts" />
+			<card value="10" suit="diamonds" />
+		</cards>
+	</player>
+
+</state>
+
+The game server will check the current players ID against the result of the xpath expression, privateOf.  
+
+Only player 0000000 will be able to see the <cards> element above, other players will see nothing.
+
