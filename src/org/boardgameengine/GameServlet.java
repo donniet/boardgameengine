@@ -168,117 +168,19 @@ public class GameServlet extends HttpServlet {
 									
 			}
 		});
-		
-		/*
-		addGetHandler("^/game/([^/]+)/datamodel", new GameServiceRequestHandler() {
-			@Override
-			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
-				Game h = null;
-				try {
-					h = Game.findGameById(matches.group(1));
-				} catch (GameLoadException e1) {
-					resp.setStatus(500);
-					if(isDebug()) {
-						resp.setContentType("text/plain");
-						e1.printStackTrace(resp.getWriter());
-					}
-				}
 				
-				if(h == null) {
-					resp.setStatus(404);
-					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
-						resp.getWriter().println("This game does not exist: " + matches.group(1));
-					return;
-				}
-				
-				List<GameState> states = h.getStates();
-				if(states.size() == 0) {
-					resp.setStatus(404);
-					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
-						resp.getWriter().println("This game has no active states: " + matches.group(1));
-					return;
-				}
-				
-				GameState gs = states.get(states.size() - 1);
-				
-				gs.refreshDatamodel();
-				
-				List<GameStateData> datamodel = gs.getDatamodel();
-				
-				Document doc = null;
-				
-				try {
-					DocumentBuilderFactory docbuildfactory = DocumentBuilderFactory.newInstance();
-					DocumentBuilder builder = docbuildfactory.newDocumentBuilder();
-					doc = builder.newDocument();
-				}
-				catch(ParserConfigurationException e) {
-					resp.setStatus(500);
-					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
-						e.printStackTrace(resp.getWriter());
-					return;
-				}
-				TransformerFactory factory = TransformerFactory.newInstance();
-				Transformer trans = null;
-
-				try {
-					trans = factory.newTransformer();
-				} catch (TransformerConfigurationException e) {
-					trans = null;
-					resp.setStatus(500);
-					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
-						e.printStackTrace(resp.getWriter());
-					return;
-				}
-							
-				Node datamodelNode = doc.createElementNS(Config.getInstance().getSCXMLNamespace(), "datamodel");
-				
-				for(GameStateData gsd : datamodel) {
-					ByteArrayInputStream bis = new ByteArrayInputStream(gsd.getValue());						
-					
-					DOMResult dr = new DOMResult(datamodelNode);
-					
-					try {
-						trans.transform(new StreamSource(bis), dr);
-					} catch (TransformerException e) {
-						resp.setStatus(500);
-						if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
-							e.printStackTrace(resp.getWriter());
-						return;
-					}
-					
-					
-				}
-				
-				doc.appendChild(datamodelNode);
-				
-				try {
-					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
-						trans.setOutputProperty(OutputKeys.INDENT, "yes");
-					trans.transform(new DOMSource(doc), new StreamResult(resp.getOutputStream()));
-				} catch (TransformerException e) {
-					resp.setStatus(500);
-					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
-						e.printStackTrace(resp.getWriter());
-					return;
-				}
-			}
-			
-		});
-		*/
-		
 		addGetHandler("^/game/([^/]+)/datamodel/([^/]+)", new GameServiceRequestHandler() {
 			@Override
 			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
 				String gameid = matches.group(1);
 				String dataid = matches.group(2);
 				
-				String userid = "";
+				String playerid = "";
 				
 				UserService userService = UserServiceFactory.getUserService();
 				if(userService.getCurrentUser() != null) {
 					GameUser gu = GameUser.findOrCreateGameUserByUser(userService.getCurrentUser());
-					userid = gu.getHashedUserId();
+					playerid = gu.getHashedUserId();
 				}
 				
 				Game h = null;
@@ -333,16 +235,10 @@ public class GameServlet extends HttpServlet {
 				}
 				
 				TransformerFactory factory = TransformerFactory.newInstance();
-				Transformer trans = null;
-				
-				URL resu = GameServlet.class.getResource("/datamodeltransform.xslt");
-				
-				org.apache.juli.logging.Log log = LogFactory.getLog(GameServlet.class);
-				
-				log.info("transformer: " + resu.toString());
-				
+				Transformer trans = null;				
+												
 				try {
-					trans = factory.newTransformer(new StreamSource(GameServlet.class.getResourceAsStream("/datamodeltransform.xslt")));
+					trans = factory.newTransformer(new StreamSource(Config.getInstance().getDataModelTransformStream()));
 				} catch (TransformerConfigurationException e) {
 					trans = null;
 					resp.setStatus(404);
@@ -357,7 +253,7 @@ public class GameServlet extends HttpServlet {
 					return;
 				}
 				
-				trans.setParameter("playerId", userid);				
+				trans.setParameter(Config.getInstance().getDataModelTransformPlayerIdParam(), playerid);				
 				
 				ByteArrayInputStream bis = new ByteArrayInputStream(gsd.getValue());
 								
@@ -429,15 +325,7 @@ public class GameServlet extends HttpServlet {
 					dispatcher.forward(req, resp);
 				} catch (ServletException e) {
 					throw new IOException(e);
-				}
-				
-				//resp.setContentType("text/plain");
-				/*
-				GaeScriptableSerializer s = new GaeScriptableSerializer(resp.getOutputStream(), scope);
-				s.Serialize(scope);
-				*/
-				
-				
+				}				
 			}
 		});
 		

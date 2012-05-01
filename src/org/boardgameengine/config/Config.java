@@ -2,6 +2,7 @@ package org.boardgameengine.config;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -13,6 +14,7 @@ import java.util.Properties;
 import java.util.Random;
 
 import org.apache.commons.codec.binary.Base64;
+import org.boardgameengine.GameServlet;
 
 import flexjson.transformer.DateTransformer;
 
@@ -29,6 +31,8 @@ public class Config {
 	private String gameEngineNamespace_ = "";
 	private String scxmlNamespace_ = "";
 	private int maxScriptRuntime_ = 1;
+	private String datamodeltransformresource_ = "";
+	private String datamodeltransformplayeridparam_ = "";
 	
 	public static Config getInstance() {
 		if(instance_ == null) {
@@ -55,6 +59,9 @@ public class Config {
 			
 			maxScriptRuntime_ = Integer.parseInt(props_.getProperty("maxScriptRuntime"));
 			
+			datamodeltransformresource_ = props_.getProperty("datamodeltransformresource");
+			datamodeltransformplayeridparam_ = props_.getProperty("datamodeltransformplayeridparam");
+			
 			random_ = new SecureRandom();
 			//dateFormat_.setCalendar(new GregorianCalendar());
 		}
@@ -62,6 +69,13 @@ public class Config {
 			//TODO: do something better here...
 			e.printStackTrace();
 		}
+	}
+	
+	public InputStream getDataModelTransformStream() {
+		return Config.class.getResourceAsStream(datamodeltransformresource_);
+	}
+	public String getDataModelTransformPlayerIdParam() {
+		return datamodeltransformplayeridparam_;
 	}
 	
 	public DateFormat getDateFormat() {
