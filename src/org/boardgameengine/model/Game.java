@@ -579,6 +579,10 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		else if(isError_) {
 			ret = false;
 		}
+		else if(!isDirty_) {
+			ret = false;
+			errorMessage_ = String.format("Event '%s' was not valid in the current state of the game.", eventid);
+		}
 		
 		isDirty_ = false;
 		isError_ = false;

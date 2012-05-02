@@ -12,6 +12,7 @@
 <script type="text/javascript" src="/js/lib/transform2d.js"></script>
 <script type="text/javascript" src="/js/view/diceView.js"></script>
 <script type="text/javascript" src="/js/view/boardView.js"></script>
+<script type="text/javascript" src="/js/view/playersView.js"></script>
 <script type="text/javascript" src="/js/view/layout.js"></script>
 <script type="text/javascript">//<![CDATA[
 
@@ -31,6 +32,11 @@ function handleLoad() {
 	
 	boardView.setBoard(board);
 	
+	var playersView = new PlayersView($("#players"));
+	
+	playersView.setBoard(board);
+	
+	
 	Event.addListener(boardView, "vertexclick", function(vertex, evt) { 
 		var responder = board.sendAction("vertexClick", 
 			{"vertex": {"x": vertex.x_, "y": vertex.y_}}
@@ -48,9 +54,15 @@ function handleLoad() {
 		var responder = board.sendAction("diceClick");
 		Event.addListener(responder, "error", handleActionError);
 	});
+	Event.addListener(playersView, "playerclick", function(p) {
+		console.log("player click: " + p.color_);
+		var responder = board.sendAction("playerClick", [p.playerId_, p.color_]);
+		Event.addListener(responder, "error", handleActionError);
+	});
 	
 	layout.addItem(document.getElementById("header"), "top", 200);
 	layout.addItem(document.getElementById("game-board"), "center");
+	layout.addItem(document.getElementById("players"), "right");
 
 	$('#endTurnButton').click(function() {
 		board.sendAction("endTurn");
@@ -85,6 +97,8 @@ $(handleLoad);
 
 </div>
 <div id="game-board"></div>
+
+<div id="players"></div>
 
 
 

@@ -350,11 +350,15 @@ Board.prototype.loadEdges = function(xml) {
 
 function Player() {
 	this.developments_ = new Array();
+	this.resources_ = new Array();
 }
 Player.prototype.loadXML = function(xml) {
 	forChildNodes(xml, {
 		"playerId": function(n) {
 			this.playerId_ = getTextContent(n);
+		},
+		"color": function(n) {
+			this.color_ = getTextContent(n);
 		},
 		"development": function(n) {
 			var d = {
@@ -362,8 +366,19 @@ Player.prototype.loadXML = function(xml) {
 				count: parseInt(n.getAttribute("count"))
 			};
 			this.developments_.push(d);
+		},
+		"resource": function(n) {
+			var pr = new PlayerResource();
+			pr.loadXML(n);
+			this.resources_.push(pr);
 		}
 	}, this);
+};
+
+function PlayerResource() {}
+PlayerResource.prototype.loadXML = function(xml) {
+	this.type_ = xml.getAttribute("type");
+	this.count_ = parseInt(xml.getAttribute("count"));
 }
 
 function Vertex() {

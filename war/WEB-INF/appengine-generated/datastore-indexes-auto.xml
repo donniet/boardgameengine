@@ -1,13 +1,13 @@
-<!-- Indices written at Tue, 1 May 2012 12:28:21 UTC -->
+<!-- Indices written at Wed, 2 May 2012 12:37:04 UTC -->
 
 <datastore-indexes>
 
-    <!-- Used 1 time in query history -->
+    <!-- Used 2 times in query history -->
     <datastore-index kind="GameState" ancestor="true" source="auto">
         <property name="stateDate" direction="asc"/>
     </datastore-index>
 
-    <!-- Used 1 time in query history -->
+    <!-- Used 2 times in query history -->
     <datastore-index kind="GameStateData" ancestor="true" source="auto">
         <property name="id" direction="asc"/>
     </datastore-index>
