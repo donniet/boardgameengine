@@ -78,9 +78,6 @@ function handleLoad() {
 		Event.addListener(responder, "error", handleActionError);
 	});
 	Event.addListener(board, "diceRolled", function(dice) {
-		$("#game-board").empty();
-		$("#players").empty();
-		board.load();
 	});
 	$('#endTurnButton').click(function() {
 		var responder = board.sendAction("endTurn");

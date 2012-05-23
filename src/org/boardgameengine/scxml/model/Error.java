@@ -52,7 +52,7 @@ public class Error extends Action {
 				"http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent", 
 				"http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor", 
 				"game.error", 
-				params, null, 0L, null);
+				params, null, 0L, null, null);
 	}
 
 	public String getMessage() {

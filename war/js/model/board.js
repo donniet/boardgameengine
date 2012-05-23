@@ -98,6 +98,44 @@ function boardNsResolver(prefix) {
 	}
 	return ns[prefix] || null;
 }
+/*
+ * 
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <!--current player: aglub19hcHBfaWRyDgsSCEdhbWVVc2VyGAEM-->
+ * <event name="board.resourcesDistributed">
+ * 		<content>
+ * 			<players xmlns="http://www.pilgrimsofnatac.com/schemas/game.xsd"><player><playerId>aglub19hcHBfaWRyDgsSCEdhbWVVc2VyGAEM</playerId><color>red</color><development count="3" type="settlement"/><development count="4" type="city"/><development count="13" type="road"/><resources><resource count="0" type="Ore"/><resource count="1" type="Grain"/><resource count="1" type="Wool"/><resource count="4" type="Brick"/><resource count="1" type="Wood"/></resources></player><player><playerId>aglub19hcHBfaWRyDgsSCEdhbWVVc2VyGAEM</playerId><color>green</color><development count="3" type="settlement"/><development count="4" type="city"/><development count="13" type="road"/><resources><resource count="2" type="Ore"/><resource count="1" type="Grain"/><resource count="1" type="Wool"/><resource count="3" type="Brick"/><resource count="0" type="Wood"/></resources></player><player><playerId>aglub19hcHBfaWRyDgsSCEdhbWVVc2VyGAEM</playerId><color>blue</color><development count="3" type="settlement"/><development count="4" type="city"/><development count="13" type="road"/><resources><resource count="2" type="Ore"/><resource count="2" type="Grain"/><resource count="0" type="Wool"/><resource count="3" type="Brick"/><resource count="0" type="Wood"/></resources></player><player><playerId>aglub19hcHBfaWRyDgsSCEdhbWVVc2VyGAEM</playerId><color>orange</color><development count="3" type="settlement"/><development count="4" type="city"/><development count="13" type="road"/><resources><resource count="2" type="Ore"/><resource count="0" type="Grain"/><resource count="0" type="Wool"/><resource count="3" type="Brick"/><resource count="0" type="Wood"/></resources></player></players>
+ * 		</content>
+ * </event>
+ */
+
+function GameEvent() {
+	this.event_ = "";
+	this.params_ = new Object();
+	this.content_ = null;
+}
+GameEvent.prototype.loadXML = function(xml) {
+	console.log("GameEvent: loading xml: " + xml);
+	forChildNodes(xml, {
+		"event": this.loadEventNode
+	}, this);
+};
+GameEvent.prototype.loadEventNode = function(xml) {
+	console.log("GameEvent: loadingEventNode: " + xml);
+	this.event_ = xml.getAttribute("name");
+	forChildNodes(xml, {
+		"param": this.loadParam,
+		"content": this.loadContent
+	}, this);
+};
+GameEvent.prototype.loadParam = function(xml) {
+	console.log("GameEvent: loading param: " + xml);
+	this.params_[xml.getAttribute("name")] = getTextContent(xml);
+};
+GameEvent.prototype.loadContent = function(xml) {
+	console.log("GameEvent: loading content: " + xml);
+	this.content_ = xml;
+};
 
 
 function Board(token, boardUrl, actionUrl, detailsUrl) {
@@ -119,7 +157,8 @@ function Board(token, boardUrl, actionUrl, detailsUrl) {
 	this.socketMessageHandlers_ = {
 		"board.placeVertexDevelopment": this.handlePlaceVertexDevelopment,
 		"board.placeEdgeDevelopment": this.handlePlaceEdgeDevelopment,
-		"board.diceRolled": this.handleDiceRoll
+		"board.diceRolled": this.handleDiceRoll,
+		"board.resourcesDistributed": this.handleResourcesDistributed
 	};
 	
 	this.player_ = new Array();
@@ -161,20 +200,25 @@ Board.prototype.handleSocketClose = function() {
 	Event.fire(this, "error", ["Communication with the server has been lost.  Please refresh your browser window.", true]);
 }
 Board.prototype.handleSocketMessage = function(msg) {
-	var data = jQuery.parseJSON(msg.data);
+	console.log("entire socket message: " + msg.data);
+	var event = new GameEvent();
+	event.loadXML(( new window.DOMParser() ).parseFromString(msg.data, "text/xml"));
+		
+	console.log("socket message: " + event.event_);
 	
-	console.log("socket message: " + msg.data);
-	
-	var handler = this.socketMessageHandlers_[data.event];
+	var handler = this.socketMessageHandlers_[event.event_];
 	
 	if(typeof handler == "function") {
-		handler.apply(this, [data.params]);
+		handler.apply(this, [event]);
 	}
 }
 
-Board.prototype.handleDiceRoll = function(params) {
+Board.prototype.handleDiceRoll = function(event) {
 	this.dice_ = new Array();
-	var values = params.diceValues.split(" ");
+	
+	if(event.params_.diceValues != null)
+	
+	var values = event.params_.diceValues.split(" ");
 	for(var i = 0; i < values.length; i++) {
 		if(values[i] != "")
 			this.dice_.push(parseInt(values[i]));
@@ -183,16 +227,26 @@ Board.prototype.handleDiceRoll = function(params) {
 	Event.fire(this, "diceRolled", [this.dice_]);
 }
 
-Board.prototype.handlePlaceVertexDevelopment = function(params) {
+Board.prototype.handleResourcesDistributed = function(event) {
+	forChildNodes(event.content_, {
+		"players": function(xml) {
+			this.loadPlayers(xml);
+		}
+	}, this);
+	
+	Event.fire(this, "resourcesUpdated", [this.players_]);
+}
+
+Board.prototype.handlePlaceVertexDevelopment = function(event) {
 	var d = new Development();
 	d.count_ = 1;
-	d.type_ = params.type;
-	d.color_ = params.color;
+	d.type_ = event.params_.type;
+	d.color_ = event.params_.color;
 	
 	var vertex = null;
 	for(var i = 0; i < this.vertex_.length; i++) {
 		var v = this.vertex_[i];
-		if(v.x_ == params.x >>> 0 && v.y_ == params.y >>> 0) {
+		if(v.x_ == event.params_.x >>> 0 && v.y_ == event.params_.y >>> 0) {
 			vertex = v;
 			break;
 		}
@@ -203,16 +257,16 @@ Board.prototype.handlePlaceVertexDevelopment = function(params) {
 		Event.fire(this, "placeVertexDevelopment", [vertex, d]);
 	}
 }
-Board.prototype.handlePlaceEdgeDevelopment = function(params) {
+Board.prototype.handlePlaceEdgeDevelopment = function(event) {
 	var d = new Development();
 	d.count_ = 1;
-	d.type_ = params.type;
-	d.color_ = params.color;
+	d.type_ = event.params_.type;
+	d.color_ = event.params_.color;
 	
 	var edge = null;
 	for(var i = 0; i < this.edge_.length; i++) {
 		var e = this.edge_[i];
-		if(e.x1_ == params.x1 >>> 0 && e.y1_ == params.y1 >>> 0 && e.x2_ == params.x2 >>> 0 && e.y2_ == params.y2 >>> 0) {
+		if(e.x1_ == event.params_.x1 >>> 0 && e.y1_ == event.params_.y1 >>> 0 && e.x2_ == event.params_.x2 >>> 0 && e.y2_ == event.params_.y2 >>> 0) {
 			edge = e;
 			break;
 		}
@@ -365,6 +419,7 @@ Board.prototype.loadXML = function(xml) {
 }
 
 Board.prototype.loadPlayers = function(xml) {
+	this.player_ = new Array();
 	forChildNodes(xml, {
 		"player": function(n) {
 			var p = new Player();

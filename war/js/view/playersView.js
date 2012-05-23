@@ -17,9 +17,14 @@ PlayersView.prototype.setBoard = function(board) {
 	this.boardLoadListenerId_ = Event.addListener(this.board_, "load", function() {
 		self.render();
 	});
+
+	Event.addListener(board, "resourcesUpdated", function(players) {
+		self.render();
+	});
 };
 PlayersView.prototype.render = function() {
 	var self = this;
+	this.el_.empty();
 	
 	var ul = $("<ul/>");
 	for(var i = 0; i < this.board_.player_.length; i++) {

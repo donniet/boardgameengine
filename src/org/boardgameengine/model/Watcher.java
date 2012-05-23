@@ -39,9 +39,6 @@ public class Watcher extends ScriptableObject {
 	
 	@Persistent
 	private Key gameUser;
-	
-	@Persistent
-	private boolean connected;
 		
 	public Watcher() {}
 	
@@ -207,14 +204,6 @@ public class Watcher extends ScriptableObject {
 
 	public void setGame(Game game) {
 		this.game = game.getKey();
-	}
-
-	public boolean isConnected() {
-		return connected;
-	}
-
-	public void setConnected(boolean connected) {
-		this.connected = connected;
 	}
 	
 	public void makePersistent() {

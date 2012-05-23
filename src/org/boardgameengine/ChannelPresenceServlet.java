@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.jdo.PersistenceManager;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -12,6 +13,9 @@ import org.boardgameengine.model.Game;
 import org.boardgameengine.model.GameUser;
 import org.boardgameengine.model.Player;
 import org.boardgameengine.model.Watcher;
+import org.boardgameengine.persist.PMF;
+import org.boardgameengine.persist.PersistenceCommand;
+import org.boardgameengine.persist.PersistenceCommandException;
 
 import com.google.appengine.api.channel.ChannelPresence;
 import com.google.appengine.api.channel.ChannelService;
@@ -29,12 +33,26 @@ public class ChannelPresenceServlet extends HttpServlet {
 		
 		String channelKey = presence.clientId();
 		
-		Watcher w = Watcher.findWatcherByChannelKey(channelKey);
-		
-		w.setConnected(presence.isConnected());
-		w.makePersistent();
-		
+		final Watcher w = Watcher.findWatcherByChannelKey(channelKey);
+
 		if(w == null) return;
+		
+		if(!presence.isConnected()) {
+			try {
+				PMF.executeCommandInTransaction(new PersistenceCommand() {				
+					@Override
+					public Object exec(PersistenceManager pm) {
+						pm.deletePersistent(w);
+						return null;
+					}
+				});
+			}
+			catch(PersistenceCommandException e) {
+				//TODO: add exception handling
+				e.printStackTrace();
+			}
+		}
+		
 		
 		Game game = Game.findUninitializedGameByKey(w.getGameKey());
 		

@@ -1,8 +1,10 @@
 package org.boardgameengine.model;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -10,6 +12,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -44,6 +47,8 @@ import org.boardgameengine.scxml.semantics.SCXMLGameSemanticsImpl;
 import org.mozilla.javascript.Function;
 import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.ScriptableObject;
+import org.mozilla.javascript.xml.XMLLib;
+import org.mozilla.javascript.xmlimpl.XMLLibImpl;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.ErrorHandler;
@@ -60,7 +65,6 @@ import com.google.appengine.api.users.User;
 import com.google.appengine.api.utils.SystemProperty;
 
 import flexjson.JSONSerializer;
-import flexjson.transformer.Transformer;
 
 import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
@@ -72,9 +76,17 @@ import javax.jdo.annotations.PersistenceCapable;
 import javax.jdo.annotations.Persistent;
 import javax.jdo.annotations.PrimaryKey;
 import javax.jdo.annotations.Extension;
+import javax.xml.bind.annotation.XmlList;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.transform.stream.StreamSource;
 
 
 @PersistenceCapable
@@ -262,7 +274,7 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	@Override
 	public void send(String sendId, String target, String targetType,
 			String event, Map params, Object hints, long delay,
-			List externalNodes) {
+			Object content, List externalNodes) {
 		
 		log.info(String.format("Send Event '%s'", event));
 		
@@ -298,7 +310,7 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		
 		if(success) {
 			//persistGameState();
-			sendWatcherMessage(event, params);
+			sendWatcherMessage(event, params, content);
 		}
 	}
 	
@@ -309,7 +321,70 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		return errorMessage_;
 	}
 		
-	public void sendWatcherMessage(String event, Map params) {
+	public void sendWatcherMessage(String event, Map params, Object content) {
+		DocumentBuilderFactory docbuilderfactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder builder = null;
+		try {
+			builder = docbuilderfactory.newDocumentBuilder();
+		} catch (ParserConfigurationException e) {
+			e.printStackTrace();
+			return;
+		}
+		Document doc = builder.newDocument();
+		
+		Node eventNode = doc.createElement("event");
+		Node eventName = doc.createAttribute("name");
+		eventName.setNodeValue(event);
+		eventNode.getAttributes().setNamedItem(eventName);
+		
+		Set paramsKeys = params.keySet();
+		for(Iterator i = paramsKeys.iterator(); i.hasNext(); ) {
+			String paramName = (String)i.next();
+			
+			Node paramNode = doc.createElement("param");
+			Node paramNameNode = doc.createAttribute("name");
+			paramNameNode.setNodeValue(paramName);
+			paramNode.getAttributes().setNamedItem(paramNameNode);
+			
+			paramNode.setTextContent(params.get(paramName).toString());
+			
+			eventNode.appendChild(paramNode);
+		}
+		
+		if(content != null) {
+			Node contentNode = doc.createElement("content");
+			Node contentBody = null;
+			try {
+				contentBody = XMLLibImpl.toDomNode(content);
+			}
+			catch(IllegalArgumentException e) {
+				contentBody = null;
+			}
+			
+			if(contentBody != null) {
+				Node imported = doc.importNode(contentBody, true);
+				contentNode.appendChild(imported);
+			}
+			else {
+				contentNode.setTextContent(content.toString());
+			}
+			eventNode.appendChild(contentNode);
+		}
+		
+		doc.appendChild(eventNode);
+		
+		TransformerFactory factory = TransformerFactory.newInstance();
+		Transformer trans = null;				
+										
+		try {
+			trans = factory.newTransformer(new StreamSource(Config.getInstance().getDataModelTransformStream()));
+		} catch (TransformerConfigurationException e) {
+			e.printStackTrace();
+			return;
+		}
+		
+			
+		/*
 		Map<String,Object> message = new HashMap<String,Object>();
 		message.put("event", event);
 		message.put("params", params);
@@ -317,11 +392,32 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		JSONSerializer json = new JSONSerializer();
 		
 		String strmessage = json.transform(new JsFunctionJsonTransformer(), Function.class, Scriptable.class).include("actions").serialize(message);		
-				
+		*/
+		
 		ChannelService channelService = ChannelServiceFactory.getChannelService();
 		
 		List<Watcher> watchers = getWatchers();
 		for(Watcher w : watchers) {
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			
+			trans.setParameter(Config.getInstance().getDataModelTransformPlayerIdParam(), KeyFactory.keyToString(w.getGameUserKey()));				
+						
+			try {
+				trans.transform(new DOMSource(doc), new StreamResult(bos));
+			} catch (TransformerException e) {
+				e.printStackTrace();
+				continue;
+			}	
+			
+			String strmessage = "";
+			
+			try {
+				strmessage = bos.toString(Config.getInstance().getEncoding());
+			} catch (UnsupportedEncodingException e) {
+				e.printStackTrace();
+				continue;
+			}
+			
 			channelService.sendMessage(new ChannelMessage(w.getChannelkey(), strmessage));
 		}
 	}

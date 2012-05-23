@@ -19,6 +19,7 @@ package org.apache.commons.scxml.model;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
@@ -275,9 +276,13 @@ public class Send extends Action implements ExternalContent {
         Context ctx = scInstance.getContext(parentTarget);
         ctx.setLocal(getNamespacesKey(), getNamespaces());
         Evaluator eval = scInstance.getEvaluator();
+        
+        Object content = null;
+        
         // Most attributes of <send> are expressions so need to be
         // evaluated before the EventDispatcher callback
         Object hintsValue = null;
+
         if (!SCXMLHelper.isStringEmpty(hints)) {
             hintsValue = eval.eval(ctx, hints);
         }
@@ -330,6 +335,17 @@ public class Send extends Action implements ExternalContent {
         			
         			params.put(name, val);
         		}
+        		else if(n.getNodeName().equals("content")) {
+        			Node exprNode = n.getAttributes().getNamedItem("expr");
+        			
+        			if(exprNode != null) {
+        				String expr = exprNode.getNodeValue();
+        				content = eval.eval(ctx, expr);
+        			}
+        			else {
+        				content = n;
+        			}
+        		}
         	}
         }
         long wait = 0L;
@@ -375,17 +391,18 @@ public class Send extends Action implements ExternalContent {
                 // short-circuit the EventDispatcher
                 return;
             }
-        }
+        }        	
+        
         ctx.setLocal(getNamespacesKey(), null);
         if (appLog.isDebugEnabled()) {
             appLog.debug("<send>: Dispatching event '" + eventValue
                 + "' to target '" + targetValue + "' of target type '"
                 + targettypeValue + "' with suggested delay of " + wait
                 + "ms");
-        }
+        }        
         // Else, let the EventDispatcher take care of it
         evtDispatcher.send(sendid, targetValue, targettypeValue, eventValue,
-            params, hintsValue, wait, externalNodes);
+            params, hintsValue, wait, content, externalNodes);
     }
 
     /**

@@ -102,7 +102,8 @@ public class SimpleScheduler implements EventDispatcher, Serializable {
      */
     public void send(final String sendId, final String target,
             final String targettype, final String event, final Map params,
-            final Object hints, final long delay, final List externalNodes) {
+            final Object hints, final long delay, final Object content, 
+            final List externalNodes) {
         // Log callback
         if (log.isInfoEnabled()) {
             StringBuffer buf = new StringBuffer();

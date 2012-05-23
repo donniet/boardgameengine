@@ -53,7 +53,7 @@ public interface EventDispatcher {
      */
     void send(String sendId, String target, String targetType,
             String event, Map params, Object hints, long delay,
-            List externalNodes);
+            Object content, List externalNodes);
 
 }
 
