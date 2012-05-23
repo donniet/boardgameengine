@@ -34,6 +34,8 @@ import org.apache.commons.scxml.model.TransitionTarget;
 import org.boardgameengine.config.Config;
 import org.boardgameengine.error.GameLoadException;
 import org.boardgameengine.persist.PMF;
+import org.boardgameengine.persist.PersistenceCommand;
+import org.boardgameengine.persist.PersistenceCommandException;
 import org.boardgameengine.scxml.js.JsContext;
 import org.boardgameengine.scxml.js.JsEvaluator;
 import org.boardgameengine.scxml.js.JsFunctionJsonTransformer;
@@ -53,6 +55,7 @@ import com.google.appengine.api.channel.ChannelMessage;
 import com.google.appengine.api.channel.ChannelService;
 import com.google.appengine.api.channel.ChannelServiceFactory;
 import com.google.appengine.api.datastore.Key;
+import com.google.appengine.api.datastore.KeyFactory;
 import com.google.appengine.api.users.User;
 import com.google.appengine.api.utils.SystemProperty;
 
@@ -82,17 +85,30 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	private Key key;
 	
 	@Persistent
-	private String gameid;
-	
-	@Persistent
 	private Key owner;
 		
 	@Persistent
-	private Set<Key> watchers;
-	
-	@Persistent
 	private Key gameTypeKey;
 	
+	@Persistent(defaultFetchGroup = "true")
+	@Element(dependent = "true", mappedBy = "game", extensions = @Extension(vendorName="datanucleus", key="cascade-persist", value="true"))
+	@Order(extensions = @Extension(vendorName="datanucleus", key="list-ordering", value="role asc"))	
+	private List<Player> players;
+	
+	@Persistent(defaultFetchGroup = "true")
+	@Element(dependent = "true", mappedBy = "game", extensions = @Extension(vendorName="datanucleus", key="cascade-persist", value="true"))
+	@Order(extensions = @Extension(vendorName="datanucleus", key="list-ordering", value="eventDate asc"))
+	private List<GameHistoryEvent> events;
+	
+	@Persistent(defaultFetchGroup = "false")
+	@Element(dependent = "true", mappedBy = "game", extensions = @Extension(vendorName="datanucleus", key="cascade-persist", value="true"))
+	@Order(extensions = @Extension(vendorName="datanucleus", key="list-ordering", value="stateDate asc"))
+	private List<GameState> states;
+	
+	@NotPersistent
+	transient private Log log = LogFactory.getLog(Game.class);
+	
+
 	@NotPersistent
 	transient private boolean isDirty_ = false;
 	
@@ -122,35 +138,11 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	@NotPersistent
 	transient private JsContext cxt;
 	
-	@Persistent
-	@Element(dependent = "true", mappedBy = "game", extensions = @Extension(vendorName="datanucleus", key="cascade-persist", value="true"))
-	@Order(extensions = @Extension(vendorName="datanucleus", key="list-ordering", value="role asc"))	
-	private List<Player> players;
-	
-	@Persistent
-	@Element(dependent = "true", mappedBy = "game", extensions = @Extension(vendorName="datanucleus", key="cascade-persist", value="true"))
-	@Order(extensions = @Extension(vendorName="datanucleus", key="list-ordering", value="eventDate asc"))
-	private List<GameHistoryEvent> events;
-	
-	@Persistent
-	@Element(dependent = "true", mappedBy = "game", extensions = @Extension(vendorName="datanucleus", key="cascade-persist", value="true"))
-	@Order(extensions = @Extension(vendorName="datanucleus", key="list-ordering", value="stateDate asc"))
-	private List<GameState> states;
-	
-	@NotPersistent
-	transient private Log log = LogFactory.getLog(Game.class);
-	
-	private static String nextGameId() {
-		return new BigInteger(60, Config.getInstance().getRandom()).toString(32).toUpperCase();
-	}
-	
 	public Game() {
-		gameid = nextGameId();
 		events = new ArrayList<GameHistoryEvent>();
 		states = new ArrayList<GameState>();
 		params = new HashMap<String,String>();
 		players = new ArrayList<Player>();
-		watchers = new HashSet<Key>();
 	}
 	
 	public Game(GameType gt) throws GameLoadException {
@@ -212,14 +204,12 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		exec.setStateMachine(scxml);
 		
 		cxt = (JsContext)exec.getRootContext();
-		//cxt.setLocal("game", this);
-		
-		
+		cxt.setLocal("game", this);		
 		
 		try {
-			if(states != null && states.size() > 0) {
-				GameState gs = states.get(states.size() - 1);
-				
+			GameState gs = getMostRecentState();
+			
+			if(gs != null) {				
 				gs.injectInto(cxt);
 				
 				Set s = exec.getCurrentStatus().getStates();
@@ -233,21 +223,8 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 			}
 			else {
 				exec.go();
-				// record initial state
-				GameState gs = new GameState(this);
 				
-				Set<State> s = exec.getCurrentStatus().getStates();
-				for(State state : s) {
-					gs.getStateSet().add(state.getId());
-				}
-				gs.setStateDate(new Date());
-				gs.extractFrom(scxml.getDatamodel(), cxt);
-				states.add(gs);
-				/*
-				PersistenceManager pm = PMF.getInstance().getPersistenceManager();
-				
-				pm.makePersistent(gs);
-				*/
+				persistGameState();
 			}
 		}
 		catch(ModelException e) {
@@ -255,6 +232,26 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		}
 		isDirty_ = false;
 		
+	}
+	
+
+	public GameState persistGameState() {
+		// record initial state
+		GameState gs = new GameState(this);
+		
+		Set<State> s = exec.getCurrentStatus().getStates();
+		for(State state : s) {
+			gs.getStateSet().add(state.getId());
+		}
+		gs.setStateDate(new Date());
+		gs.extractFrom(scxml.getDatamodel(), cxt);
+		states.add(gs);
+		
+		makePersistent();
+		isDirty_ = false;
+		isError_ = false;
+		
+		return gs;
 	}
 
 	@Override
@@ -300,6 +297,7 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		}
 		
 		if(success) {
+			//persistGameState();
 			sendWatcherMessage(event, params);
 		}
 	}
@@ -309,16 +307,6 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	}
 	public String getErrorMessage() {
 		return errorMessage_;
-	}
-	
-	public static String createChannelKey(Game g, GameUser gu) {
-		return g.gameid + " " + gu.getHashedUserId();
-	}
-	public String getChannelKeyForGameUser(GameUser gu) {
-		return createChannelKey(this, gu);
-	}
-	public static String[] parseChannelKey(String channelkey) {
-		return channelkey.split(" ");
 	}
 		
 	public void sendWatcherMessage(String event, Map params) {
@@ -332,33 +320,11 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 				
 		ChannelService channelService = ChannelServiceFactory.getChannelService();
 		
-		List<GameUser> w = getWatchers();
-		for(GameUser gu : w) {
-			String channelkey = createChannelKey(this, gu);
-			channelService.sendMessage(new ChannelMessage(channelkey, strmessage));
+		List<Watcher> watchers = getWatchers();
+		for(Watcher w : watchers) {
+			channelService.sendMessage(new ChannelMessage(w.getChannelkey(), strmessage));
 		}
 	}
-	
-	public GameState persistGameState() {
-		// record initial state
-		GameState gs = new GameState(this);
-		
-		Set<State> s = exec.getCurrentStatus().getStates();
-		for(State state : s) {
-			gs.getStateSet().add(state.getId());
-		}
-		gs.setStateDate(new Date());
-		gs.extractFrom(scxml.getDatamodel(), cxt);
-		states.add(gs);
-		
-		this.makePersistent();
-		isDirty_ = false;
-		isError_ = false;
-		
-		return gs;
-	}
-	
-
 	
 	public String[] getTransitionEvents() {
 		Set<String> ret = new HashSet<String>();
@@ -378,44 +344,65 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		return ret.toArray(new String[0]);
 	}
 	
-	public static Game findGameById(String gameid) throws GameLoadException {
-		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
-		
+	public static Game findUninitializedGameByKey(final Key key) {
 		Game ret = null;
 		
-		Query q = pm.newQuery(Game.class);
-		q.setFilter("gameid == gameIdToFind");
-		q.declareParameters("String gameIdToFind");
-		List<Game> results = (List<Game>)q.execute(gameid.toUpperCase());
-		
-		
-		if(results.size() > 0) {
-			ret = results.get(0);
-			ret.init();
+		try {
+			ret = (Game)PMF.executeCommandInTransaction(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					Game g = pm.getObjectById(Game.class, key);
+					if(g != null) pm.makeTransient(g);
+					return g;
+				}
+			});
 		}
-
-		pm.close();
+		catch(PersistenceCommandException e) {
+			e.printStackTrace();
+			ret = null;
+		}
 		
 		return ret;
 	}
 	
-	public SCXMLExecutor getExec() {
+	public static Game findGameByKey(Key key) throws GameLoadException {
+		
+		Game ret = findUninitializedGameByKey(key);
+		
+		if(ret != null) {
+			ret.init();
+		}
+
+		return ret;
+	}
+	
+	protected SCXMLExecutor getExec() {
 		return exec;
 	}
+	
+	public Set<State> getCurrentStates() {
+		return getExec().getCurrentStatus().getStates();
+	}
+	
 	public GameUser getOwner() {
-		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
-		Query q = pm.newQuery(GameUser.class);
-		q.setFilter("key == keyIn");
-		q.declareParameters(Key.class.getName() + " keyIn");
+		GameUser ret = null;
 		
-		List<GameUser> ret = (List<GameUser>)q.execute(owner);
+		try {
+			ret = (GameUser)PMF.executeCommandInTransaction(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					GameUser ret = pm.getObjectById(GameUser.class, owner);
+					if(ret != null) 
+						pm.makeTransient(ret);
+					return ret;
+				}
+			});
+		}
+		catch(PersistenceCommandException e) {
+			ret = null;
+		}
 		
-		if(ret.size() > 0) {
-			return ret.get(0);
-		}
-		else {
-			return null;
-		}
+		return ret;
 	}
 	public void setOwner(User u) {
 		GameUser gu = GameUser.findOrCreateGameUserByUser(u);
@@ -425,14 +412,39 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	public List<GameHistoryEvent> getEvents() {
 		return events;
 	}
-	protected void setGameId(String gameid_) {
-		this.gameid = gameid_;
-	}
-	public String getGameId() {
-		return gameid;
-	}
-	public List<GameState> getStates() {
-		return states;
+	public GameState getMostRecentState() {
+		final Game param = this;
+		GameState ret = null;
+		
+		try {
+			ret = (GameState)PMF.executeCommandInTransaction(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					Query q = pm.newQuery(GameState.class);
+					q.setFilter("game == gameIn");
+					q.setOrdering("stateDate desc");
+					q.setRange(0, 1);
+					q.declareParameters(Game.class.getName() + " gameIn");
+					
+					List<GameState> results = (List<GameState>)q.execute(param);
+					
+					if(results.size() > 0) {
+						GameState gs = results.get(0);
+						pm.makeTransient(gs);
+						return gs;
+					}
+					else {
+						return null;
+					}
+				}
+			});
+		}
+		catch(PersistenceCommandException e) {
+			e.printStackTrace();
+			ret = null;
+		}
+		
+		return ret;
 	}
 	public Map<String,String> getParameters() {
 		return params;
@@ -456,28 +468,13 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	public List<Player> getPlayers() {
 		return players;
 	}
-	public List<GameUser> getWatchers() {
-		List<GameUser> ret = new ArrayList<GameUser>();
-		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
-		Query q = pm.newQuery(GameUser.class);
-		q.setFilter("key == keyIn");
-		q.declareParameters(Key.class.getName() + " keyIn");
-		
-		for(Key k : watchers) {
-			List<GameUser> l = (List<GameUser>)q.execute(k);
-			if(l != null && l.size() > 0) {
-				ret.add(l.get(0));
-			}
-		}
-		
-		return ret;
-	}
 	private void addPlayer(User user, String role) {
 		GameUser gu = GameUser.findOrCreateGameUserByUser(user);
 		players.add(new Player(this, gu, role));
 	}
 	private void addPlayer(GameUser gameUser, String role) {
-		players.add(new Player(this, gameUser, role));
+		Player p = new Player(this, gameUser, role);
+		players.add(p);		
 	}
 
 	public boolean sendStartGameRequest(User user) {
@@ -589,49 +586,109 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		
 		return ret;
 	}
-	public boolean addWatcher(User user) {
-		GameUser gu = GameUser.findOrCreateGameUserByUser(user);
-		return watchers.add(gu.getKey());
+	public List<Watcher> getWatchers() {
+		return Watcher.findWatchersByGame(this);
+	}
+	public Watcher addWatcher(User user) {
+		final GameUser gu = GameUser.findOrCreateGameUserByUser(user);
+		final Game game = this;
+		
+		Watcher ret = null;
+		
+		try {
+			ret = (Watcher)PMF.executeCommandInTransaction(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					Watcher w = Watcher.findWatcherByGameAndGameUser(game, gu);
+					
+					if(w == null) {
+						w = new Watcher(game, gu);
+						pm.makePersistent(w);
+					}
+					
+					return w;
+				}
+			});
+		}
+		catch(PersistenceCommandException e) {
+			//TODO: handle this exception
+			e.printStackTrace();
+		}		
+		
+		return ret;
 	}
 	public boolean removeWatcher(User user) {
-		GameUser gu = GameUser.findOrCreateGameUserByUser(user);
-		return watchers.remove(gu.getKey());
+		final GameUser gu = GameUser.findOrCreateGameUserByUser(user);
+		final Game game = this;
+		
+		boolean ret = false;
+		
+		try {
+			ret = (Boolean)PMF.executeCommandInTransaction(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					Watcher w = Watcher.findWatcherByGameAndGameUser(game, gu);
+					
+					if(w == null) {
+						return false;
+					}
+					else {
+						pm.deletePersistent(w);
+						return true;
+					}
+				}
+			});
+		}
+		catch(PersistenceCommandException e) {
+			//TODO: handle this exception
+			e.printStackTrace();
+		}		
+		
+		return ret;
 	}
 	public void setGameType(GameType gt) {
 		if(gt != null) this.gameTypeKey = gt.getKey();
 		else this.gameTypeKey = null;
 	}
 	public GameType getGameType() {
-		return GameType.findByKey(this.gameTypeKey);
+		if(this.gameTypeKey == null) 
+			return null;
+		else 
+			return GameType.findByKey(this.gameTypeKey);
 	}
 	
 	public void makePersistent() {
-		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
+		final Game persist = this;
 		
 		try {
-			pm.makePersistent(this);
-			/*
-			for(GameState gs : states) {
-				pm.makePersistent(gs);
-			}
-			*/
+			PMF.executeCommandInTransaction(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					pm.makePersistent(persist);
+					return null;
+				}
+			});
 		}
-		catch(Exception e) {
-			//TODO: handle this somehow...
+		catch(PersistenceCommandException e) {
 			e.printStackTrace();
-		}
-		finally {		
-			pm.close();
 		}
 	}
 	
 	public void serialize(Writer out) {
 		JSONSerializer json = new JSONSerializer();
 		
+		for(Player p : players) {
+			
+		}
+		
 		json.include("events")
 			.include("parameters")
 			.include("players")
-			.include("watchers")
+			.exclude("watchers")
+			.include("owner")
+			.include("states")
+			.include("gameType")
+			.exclude("exec")
 			.exclude("*.class")
 			.exclude("*.className")
 			.exclude("*.key")
@@ -679,6 +736,10 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 			Transition transition) {
 		log.info("OnTransition: " + from.getId() + " -> " + to.getId() + ": [" + transition.getEvent() + "]");
 		isDirty_ = true;		
+	}
+
+	public Key getKey() {
+		return key;
 	}
 
 

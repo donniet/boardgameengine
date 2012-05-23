@@ -10,6 +10,8 @@ import javax.jdo.annotations.Persistent;
 import javax.jdo.annotations.PrimaryKey;
 
 import org.boardgameengine.persist.PMF;
+import org.boardgameengine.persist.PersistenceCommand;
+import org.boardgameengine.persist.PersistenceCommandException;
 
 import com.google.appengine.api.datastore.Blob;
 import com.google.appengine.api.datastore.Key;
@@ -38,32 +40,69 @@ public class GameType {
 		return key;
 	}
 	
-	public static GameType findByTypeName(String typeName) {
-		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
-		Query q = pm.newQuery(GameType.class);
-		q.setFilter("typeName == typeNameIn");
-		q.declareParameters("String typeNameIn");
+	public static GameType findByTypeName(final String typeName) {
+		GameType ret = null;
+		try {
+			ret = (GameType)PMF.executeCommandInTransaction(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					Query q = pm.newQuery(GameType.class);
+					q.setFilter("typeName == typeNameIn");
+					q.declareParameters("String typeNameIn");
+					
+					List<GameType> results = (List<GameType>)q.execute(typeName);
+					if(results.size() > 0) {
+						GameType gt = results.get(0);
+						pm.makeTransient(gt);
+						return gt;
+					}
+					else {
+						return null;
+					}
+				}
+			});
+		}
+		catch(PersistenceCommandException e) {
+			e.printStackTrace();
+			ret = null;
+		}
 		
-		List<GameType> results = (List<GameType>)q.execute(typeName);
-		if(results.size() > 0) {
-			return results.get(0);
-		}
-		else {
-			return null;
-		}
+		return ret;
+		
+		
 	}
-	public static GameType findByKey(Key key) {
-		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
-		Query q = pm.newQuery(GameType.class);
-		q.setFilter("key == keyIn");
-		q.declareParameters(Key.class.getName() + " keyIn");
-		
-		List<GameType> results = (List<GameType>)q.execute(key);
-		if(results.size() > 0) {
-			return results.get(0);
+	public static GameType findByKey(final Key key) {
+		GameType ret = null;
+		try {
+			ret = (GameType)PMF.executeCommandInTransaction(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					GameType gt = pm.getObjectById(GameType.class, key);
+					if(gt != null)
+						pm.makeTransient(gt);
+					return gt;
+				}
+			});
 		}
-		else {
-			return null;
+		catch(PersistenceCommandException e) {
+			ret = null;
+		}
+		
+		return ret;
+	}
+	public void makePersistent() {
+		final GameType persist = this;
+		try {
+			PMF.executeCommandInTransaction(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					pm.makePersistent(persist);
+					return null;
+				}
+			});
+		}
+		catch(PersistenceCommandException e) {
+			e.printStackTrace();
 		}
 	}
 

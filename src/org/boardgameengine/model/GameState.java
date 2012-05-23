@@ -36,6 +36,8 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.commons.scxml.model.Data;
 import org.apache.commons.scxml.model.Datamodel;
 import org.boardgameengine.persist.PMF;
+import org.boardgameengine.persist.PersistenceCommand;
+import org.boardgameengine.persist.PersistenceCommandException;
 import org.boardgameengine.scxml.js.JsContext;
 import org.mozilla.javascript.xmlimpl.XMLLibImpl;
 import org.w3c.dom.Document;
@@ -44,7 +46,7 @@ import org.w3c.dom.Node;
 import com.google.appengine.api.datastore.Blob;
 import com.google.appengine.api.datastore.Key;
 
-@PersistenceCapable
+@PersistenceCapable(detachable="true")
 public class GameState {
 	@PrimaryKey
 	@Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
@@ -56,7 +58,7 @@ public class GameState {
 	@Persistent
 	private Date stateDate = new Date();
 	
-	@Persistent
+	@Persistent(defaultFetchGroup = "true")
 	@Element(dependent = "true", mappedBy = "gameState", extensions = @Extension(vendorName="datanucleus", key="cascade-persist", value="true"))
 	@Order(extensions = @Extension(vendorName="datanucleus", key="list-ordering", value="id asc"))	
 	private List<GameStateData> datamodel;
@@ -184,16 +186,30 @@ public class GameState {
 		return datamodel;
 	}
 	
+	@SuppressWarnings("unchecked")
 	public void refreshDatamodel() {
-		PersistenceManager pm = PMF.getInstance().getPersistenceManager();
+		List<GameStateData> results = null;
+		try {
+			results = (List<GameStateData>)PMF.executeCommandInTransaction(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					Query q = pm.newQuery(GameStateData.class);
+					q.setFilter("gameState == gameStateToFind");
+					q.declareParameters(GameState.class.getName() + " gameStateToFind");
+					List<GameStateData> results = (List<GameStateData>)q.execute(this);
+					
+					pm.makeTransientAll(results);
+					
+					return results;
+				}
+			});
+		}
+		catch(PersistenceCommandException e) {
+			e.printStackTrace();
+		}
 		
-		Game ret = null;
-		
-		Query q = pm.newQuery(GameStateData.class);
-		q.setFilter("gameState == gameStateToFind");
-		q.declareParameters(GameState.class.getName() + " gameStateToFind");
-		List<GameStateData> results = (List<GameStateData>)q.execute(this);
-		
-		datamodel = results;
+		if(results != null) {
+			setDatamodel(results);
+		}
 	}
 }

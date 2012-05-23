@@ -1,13 +1,23 @@
-<!-- Indices written at Wed, 2 May 2012 12:37:04 UTC -->
+<!-- Indices written at Tue, 22 May 2012 21:58:25 UTC -->
 
 <datastore-indexes>
 
-    <!-- Used 2 times in query history -->
-    <datastore-index kind="GameState" ancestor="true" source="auto">
-        <property name="stateDate" direction="asc"/>
+    <!-- Used 39 times in query history -->
+    <datastore-index kind="GameHistoryEvent" ancestor="true" source="auto">
+        <property name="eventDate" direction="asc"/>
     </datastore-index>
 
-    <!-- Used 2 times in query history -->
+    <!-- Used 27 times in query history -->
+    <datastore-index kind="Player" ancestor="true" source="auto">
+        <property name="role" direction="asc"/>
+    </datastore-index>
+
+    <!-- Used 29 times in query history -->
+    <datastore-index kind="GameState" ancestor="true" source="auto">
+        <property name="stateDate" direction="desc"/>
+    </datastore-index>
+
+    <!-- Used 28 times in query history -->
     <datastore-index kind="GameStateData" ancestor="true" source="auto">
         <property name="id" direction="asc"/>
     </datastore-index>

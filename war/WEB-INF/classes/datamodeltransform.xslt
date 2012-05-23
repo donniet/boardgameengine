@@ -3,7 +3,8 @@
 	xmlns="http://www.pilgrimsofnatac.com/schemas/game.xsd" 
 	xmlns:game="http://www.pilgrimsofnatac.com/schemas/game.xsd"
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
-	xmlns:xalan="http://xml.apache.org/xalan">
+	xmlns:xalan="http://xml.apache.org/xalan"
+	xmlns:fn="http://www.w3.org/2005/xpath-functions">
 	
 	<xsl:param name="playerId" />
 	
@@ -25,7 +26,7 @@
 			</xsl:when>
 			<xsl:when test="xalan:evaluate(@privateOf) = $playerId">
 				<xsl:copy>
-					<xsl:apply-templates select="*|@*|text()" />
+					<xsl:apply-templates select="*|@*[local-name() != 'privateOf']|text()" />
 				</xsl:copy>
 			</xsl:when>
 			<xsl:otherwise>

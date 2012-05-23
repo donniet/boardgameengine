@@ -4,12 +4,18 @@ import java.util.List;
 
 import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
+import javax.jdo.annotations.Column;
+import javax.jdo.annotations.Extension;
 import javax.jdo.annotations.IdGeneratorStrategy;
+import javax.jdo.annotations.NotPersistent;
+import javax.jdo.annotations.NullValue;
 import javax.jdo.annotations.PersistenceCapable;
 import javax.jdo.annotations.Persistent;
 import javax.jdo.annotations.PrimaryKey;
 
 import org.boardgameengine.persist.PMF;
+import org.boardgameengine.persist.PersistenceCommand;
+import org.boardgameengine.persist.PersistenceCommandException;
 import org.mozilla.javascript.ScriptableObject;
 
 import com.google.appengine.api.datastore.Key;
@@ -26,8 +32,12 @@ public class Player extends ScriptableObject {
 	private Key gameUserKey;
 	
 	@Persistent
+	private boolean connected = false;
+	
+	@Persistent
 	private Game game;
 	
+	@NotPersistent
 	transient private GameUser gameUser = null;
 	
 	@Persistent
@@ -45,15 +55,21 @@ public class Player extends ScriptableObject {
 	public Key getKey() { return key; }
 	public GameUser getGameUser() {
 		if(gameUser == null) {
-			PersistenceManager pm = PMF.getInstance().getPersistenceManager();
-			
-			Query q = pm.newQuery(GameUser.class);
-			q.setFilter("key == keyIn");
-			q.declareParameters(Key.class.getName() + " keyIn");
-			List<GameUser> results = (List<GameUser>)q.execute(gameUserKey);
-			
-			if(results.size() > 0)
-				gameUser = results.get(0);
+			try {
+				gameUser = (GameUser)PMF.executeCommandInTransaction(new PersistenceCommand() {
+					@Override
+					public Object exec(PersistenceManager pm) {
+						GameUser ret = pm.getObjectById(GameUser.class, gameUserKey);
+						if(ret != null)
+							pm.makeTransient(ret);
+						return ret;
+					}
+				});
+			}
+			catch(PersistenceCommandException e) {
+				e.printStackTrace();
+				gameUser = null;
+			}			
 		}
 		
 		return gameUser; 
@@ -61,6 +77,30 @@ public class Player extends ScriptableObject {
 	
 	public String getRole() {
 		return role;
+	}
+	
+	public boolean isConnected() {
+		return connected;
+	}
+
+	public void setConnected(boolean connected) {
+		this.connected = connected;
+	}
+	
+	public void makePersistent() {
+		final Player persist = this; 
+		try {
+			PMF.executeCommandInTransaction(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					pm.makePersistent(persist);
+					return null;
+				}
+			});
+		}
+		catch(PersistenceCommandException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	//scriptable object stuff
@@ -76,6 +116,7 @@ public class Player extends ScriptableObject {
 	public String jsGet_role() {
 		return getRole();
 	}
+
 	
 	
 	

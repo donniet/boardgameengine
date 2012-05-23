@@ -40,12 +40,13 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamSource;
 import javax.xml.transform.stream.StreamResult;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.commons.scxml.TriggerEvent;
 import org.apache.commons.scxml.io.SCXMLParser;
 import org.apache.commons.scxml.model.ModelException;
 import org.apache.commons.scxml.model.SCXML;
 import org.apache.commons.scxml.model.State;
-import org.apache.juli.logging.LogFactory;
 import org.boardgameengine.config.Config;
 import org.boardgameengine.error.GameLoadException;
 import org.boardgameengine.model.Game;
@@ -54,11 +55,11 @@ import org.boardgameengine.model.GameState;
 import org.boardgameengine.model.GameStateData;
 import org.boardgameengine.model.GameType;
 import org.boardgameengine.model.GameUser;
+import org.boardgameengine.model.Watcher;
 import org.boardgameengine.persist.PMF;
 import org.boardgameengine.scxml.js.GaeScriptableSerializer;
 import org.boardgameengine.scxml.js.JsContext;
 import org.boardgameengine.scxml.js.JsFunctionJsonTransformer;
-import org.mortbay.log.Log;
 import org.mozilla.javascript.Function;
 import org.mozilla.javascript.NativeArray;
 import org.mozilla.javascript.Scriptable;
@@ -72,6 +73,7 @@ import org.xml.sax.SAXParseException;
 import com.google.appengine.api.channel.ChannelMessage;
 import com.google.appengine.api.channel.ChannelService;
 import com.google.appengine.api.channel.ChannelServiceFactory;
+import com.google.appengine.api.datastore.KeyFactory;
 import com.google.appengine.api.users.User;
 import com.google.appengine.api.users.UserService;
 import com.google.appengine.api.users.UserServiceFactory;
@@ -83,6 +85,8 @@ import java.util.regex.*;
 
 @SuppressWarnings("serial")
 public class GameServlet extends HttpServlet {	
+	private Log log = LogFactory.getLog(GameServlet.class);
+	
 	private class PatternHandlerPair {
 		public RequestHandler handler = null;
 		public Pattern pattern = null;
@@ -132,11 +136,9 @@ public class GameServlet extends HttpServlet {
 				
 				t.setStateChart(bos.toByteArray());
 				
-				PersistenceManager pm = PMF.getInstance().getPersistenceManager();
+				t.makePersistent();
 				
-				pm.makePersistent(t);
-				
-				resp.sendRedirect("/createGame?type=Test");
+				resp.sendRedirect(String.format("/createGame?type=%s", KeyFactory.keyToString(t.getKey())));
 			}
 		});
 		
@@ -145,8 +147,23 @@ public class GameServlet extends HttpServlet {
 			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
 				UserService userService = UserServiceFactory.getUserService();
 				
-				GameType gt = GameType.findByTypeName(req.getParameter("type"));
-								
+				String keyString = req.getParameter("type");
+				if(keyString == null || keyString.length() == 0) {
+					resp.setStatus(400);
+					resp.setContentType("text/plain");
+					resp.getWriter().println("type parameter not specified");
+					return;
+				}
+				
+				GameType gt = GameType.findByKey(KeyFactory.stringToKey(keyString));
+				
+				if(gt == null) {
+					resp.setStatus(400);
+					resp.setContentType("text/plain");
+					resp.getWriter().println("GameType not found with specified key");
+					return;
+				}
+												
 				Game h = null;
 				try {
 					h = new Game(gt);
@@ -156,16 +173,13 @@ public class GameServlet extends HttpServlet {
 					resp.getWriter().println("Could not load game type: " + req.getParameter("type"));
 					return;
 				}
-				
-				//h.addPlayer(userService.getCurrentUser(), "green");
-				
+								
 				h.setOwner(userService.getCurrentUser());				
 				h.addWatcher(userService.getCurrentUser());
 				
 				h.makePersistent();
 				
-				resp.sendRedirect(String.format("/game/%s/", h.getGameId()));
-									
+				resp.sendRedirect(String.format("/game/%s/", KeyFactory.keyToString(h.getKey())));
 			}
 		});
 				
@@ -185,7 +199,7 @@ public class GameServlet extends HttpServlet {
 				
 				Game h = null;
 				try {
-					h = Game.findGameById(gameid);
+					h = Game.findGameByKey(KeyFactory.stringToKey(gameid));
 				} catch (GameLoadException e1) {
 					resp.setStatus(500);
 					if(isDebug()) {
@@ -201,17 +215,19 @@ public class GameServlet extends HttpServlet {
 					return;
 				}
 				
-				List<GameState> states = h.getStates();
-				if(states.size() == 0) {
+				GameState gs = h.getMostRecentState();
+				
+				if(gs == null) {
 					resp.setStatus(404);
 					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
 						resp.getWriter().println("This game has no active states: " + matches.group(1));
 					return;
 				}
 				
-				GameState gs = states.get(states.size() - 1);
+				log.info(String.format("state date: %s", gs.getStateDate()));
 				
-				gs.refreshDatamodel();
+				//gs.refreshDatamodel();
+				//gs.detatch();
 				
 				List<GameStateData> datamodel = gs.getDatamodel();
 				
@@ -276,7 +292,7 @@ public class GameServlet extends HttpServlet {
 				String gameid = matches.group(1);
 				Game h = null;
 				try {
-					h = Game.findGameById(gameid);
+					h = Game.findGameByKey(KeyFactory.stringToKey(gameid));
 				} catch (GameLoadException e1) {
 					resp.setStatus(500);
 					if(isDebug()) {
@@ -297,8 +313,9 @@ public class GameServlet extends HttpServlet {
 				User u = userService.getCurrentUser();
 				
 				if(u != null) {
-					GameUser gu = GameUser.findOrCreateGameUserByUser(u);
-					String channelKey = h.getChannelKeyForGameUser(gu);
+					Watcher w = h.addWatcher(u);
+					
+					String channelKey = w.getChannelkey();
 					
 					ChannelService channelService = ChannelServiceFactory.getChannelService();
 					String token = channelService.createChannel(channelKey);
@@ -313,10 +330,11 @@ public class GameServlet extends HttpServlet {
 				
 				req.setAttribute("gameid", gameid);
 				req.setAttribute("boarddatamember", "state");
-				req.setAttribute("boarddatamemberurl", String.format("/game/%s/datamodel/state", gameid));
-				req.setAttribute("joingameurl", String.format("/game/%s/join", gameid));
-				req.setAttribute("boardactionurl", String.format("/game/%s/event/", gameid));
-				req.setAttribute("startgameurl", String.format("/game/%s/start", gameid));
+				req.setAttribute("boarddatamemberurl", String.format("datamodel/state", gameid));
+				req.setAttribute("joingameurl", String.format("join", gameid));
+				req.setAttribute("boardactionurl", String.format("event/", gameid));
+				req.setAttribute("startgameurl", String.format("start", gameid));
+				req.setAttribute("gamedetailsurl", "details");
 				
 				RequestDispatcher dispatcher = req.getRequestDispatcher("/WEB-INF/board.jsp");
 				
@@ -335,7 +353,7 @@ public class GameServlet extends HttpServlet {
 				String gameid = matches.group(1);
 				Game h = null;
 				try {
-					h = Game.findGameById(gameid);
+					h = Game.findGameByKey(KeyFactory.stringToKey(gameid));
 				} catch (GameLoadException e1) {
 					resp.setStatus(500);
 					if(isDebug()) {
@@ -369,7 +387,7 @@ public class GameServlet extends HttpServlet {
 				String gameid = matches.group(1);
 				Game h = null;
 				try {
-					h = Game.findGameById(gameid);
+					h = Game.findGameByKey(KeyFactory.stringToKey(gameid));
 				} catch (GameLoadException e1) {
 					resp.setStatus(500);
 					if(isDebug()) {
@@ -401,7 +419,7 @@ public class GameServlet extends HttpServlet {
 				String gameid = matches.group(1);
 				Game h = null;
 				try {
-					h = Game.findGameById(gameid);
+					h = Game.findGameByKey(KeyFactory.stringToKey(gameid));
 				} catch (GameLoadException e1) {
 					resp.setStatus(500);
 					if(isDebug()) {
@@ -487,7 +505,7 @@ public class GameServlet extends HttpServlet {
 				
 				Set<String> state = new HashSet<String>();
 				
-				for(Object o : h.getExec().getCurrentStatus().getStates()) {
+				for(State o : h.getCurrentStates()) {
 					State s = (State)o;
 					state.add(s.getId());
 				}
@@ -501,10 +519,12 @@ public class GameServlet extends HttpServlet {
 			}
 		});
 		
-		addGetHandler("^/game/([^/]+)/gameHistory", new GameServiceRequestHandler() {
+		addGetHandler("^/game/([^/]+)/details", new GameServiceRequestHandler() {
 			@Override
 			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches)
 					throws IOException {
+				String gameid = matches.group(1);
+				
 				resp.setContentType("application/json");
 				
 				GregorianCalendar gc = new GregorianCalendar(2000, 0, 1);
@@ -529,7 +549,7 @@ public class GameServlet extends HttpServlet {
 								
 				Game h = null;
 				try {
-					h = Game.findGameById(matches.group(1));
+					h = Game.findGameByKey(KeyFactory.stringToKey(gameid));
 				} catch (GameLoadException e) {
 					resp.setStatus(500);
 					if(isDebug()) {

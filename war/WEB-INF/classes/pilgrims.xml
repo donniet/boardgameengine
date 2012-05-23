@@ -22,8 +22,8 @@
 			initializeAndAddPlayer: function(playerId, board, playerTemplate) {
 				var colors = playerTemplate.@colors.text().toString().split(" ");
 				log.info(playerTemplate.@colors.text().toString());
-				log.info(board.player.length());
-				var playerColor = colors[board.player.length()];
+				log.info(board.players.player.length());
+				var playerColor = colors[board.players.player.length()];
 				log.info(playerColor);
 				var player = <player><playerId>{playerId}</playerId><color>{playerColor}</color></player>;
 				log.info(player.toXMLString());
@@ -39,10 +39,12 @@
 				
 				log.info("about to add a player: " + state.board);
 						
-				var player = state.board.appendChild(player);
+				var player = state.board.players.appendChild(player);
 								
 				log.info("adding player: " + playerId);
 				log.info("done players: " + state.board);
+				
+				return playerColor;
 			},
 			polyCorners: function(x, y) {
 				x = x >>> 0;
@@ -161,7 +163,7 @@
 			},
 			placeVertexDevelopment: function(board, dev, col, x, y) {
 				log.info("placing development: " + dev + "-" + col + " " + x + "," + y);
-				var p = board.player.(color.text() == col)[0];
+				var p = board.players.player.(color.text() == col)[0];
 				var pd = p.development.(@type == dev)[0];
 				var v = board.verteces.vertex.(@x==x && @y==y)[0];
 				
@@ -173,7 +175,7 @@
 			},
 			placeEdgeDevelopment: function(board, dev, col, x1, y1, x2, y2) {
 				log.info("placing development: " + dev + "-" + col.text() + " " + x1 + "," + y1 + "," + x2 + "," + y2);
-				var p = board.player.(color.text() == col)[0];
+				var p = board.players.player.(color.text() == col)[0];
 				var pd = p.development.(@type == dev)[0];
 				var e = board.edges.edge.(@x1==x1 && @y1==y1 && @x2==x2 && @y2==y2)[0];
 				
@@ -275,7 +277,8 @@
 				state.board.appendChild(<maxPlayers>{state.template.maxPlayers.text()}</maxPlayers>);
 				state.board.appendChild(<polys/>);
 				state.board.appendChild(<verteces/>);
-				state.board.appendChild(<edges/>);		
+				state.board.appendChild(<edges/>);
+				state.board.appendChild(<players/>);
 				state.board.appendChild(state.template.resources);	
 				state.board.appendChild(state.template.polytypes);	
 				
@@ -285,13 +288,13 @@
 	</state>
 	
 	<state id="waitingForPlayers">
-		<transition cond="state.board.player.length() == state.board.maxPlayers" target="createBoard">
+		<transition cond="state.board.players.player.length() == state.board.maxPlayers" target="createBoard">
 			<script>//<![CDATA[
 				log.info("Max Players: " + state.board.maxPlayers);
-				log.info("State.board.player.length(): " + state.board.player.length());
+				log.info("State.board.players.player.length(): " + state.board.players.player.length());
 			]]></script>
 		</transition>
-		<transition event="game.startGame" cond="state.board.player &amp;&amp; state.board.player.length() &lt; parseInt(state.board.minPlayers)">
+		<transition event="game.startGame" cond="state.board.players.player &amp;&amp; state.board.players.player.length() &lt; parseInt(state.board.minPlayers)">
 			<game:error message="You cannot start the game until you get the minimum number of players" />
 			<script>log.info("--You cannot start the game until you get the minimum number of players")</script>
 		</transition>
@@ -299,21 +302,21 @@
 			<script>log.info("creating board...");</script>
 		</transition>
 		
-		<transition event="game.playerJoin" cond="state.board.player.length() + 1 &gt; state.board.maxPlayers">
+		<transition event="game.playerJoin" cond="state.board.players.player.length() + 1 &gt; state.board.maxPlayers">
 			<game:error message="The game has reached the maximum number of players." />
 			<script>log.info("The game has reached the maximum number of players.")</script>
 		</transition>
 		<transition event="game.playerJoin">
 			<script>//<![CDATA[
 				log.info("Event Data: " + _eventdata.toXMLString() + ", player: " + _eventdata.text());
-				util.initializeAndAddPlayer(_eventdata.text(), state.board, state.template.playerTemplate);
+				var role = util.initializeAndAddPlayer(_eventdata.text(), state.board, state.template.playerTemplate);
 			//]]></script>
 			<send 	event="'game.playerJoined'" 
 					target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
 					targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
 					id="'game.playerJoined.send'">
 				<param name="playerid" expr="_eventdata.text()" />
-				<param name="role" expr="state.board.player.(playerId.text()==_eventdata.text()).color.text()" />
+				<param name="role" expr="role" />
 			</send>
 		</transition>
 	</state>
@@ -397,7 +400,7 @@
 	<state id="placement" initial="placement.buildSettlement">
 		<state id="placement.buildSettlement" initial="placement.buildSettlement.build">
 			<state id="placement.buildSettlement.build">
-				<transition event="board.vertexClick" cond="_eventdata.player.text() != state.board.player[state.board.currentPlayer].playerId.text()">
+				<transition event="board.vertexClick" cond="_eventdata.player.text() != state.board.players.player[state.board.currentPlayer].playerId.text()">
 					<game:error message="You are not the current player." />
 					<script>log.error("You are not the current player.");</script>
 				</transition>
@@ -415,7 +418,7 @@
 				</transition>
 				<transition event="board.vertexClick" target="placement.buildSettlement.buildRoad">
 					<script>//<![CDATA[
-						var player = state.board.player[state.board.currentPlayer];
+						var player = state.board.players.player[state.board.currentPlayer];
 												
 						util.placeVertexDevelopment(state.board, "settlement", player.color.text(),  _eventdata.vertex.@x, _eventdata.vertex.@y);
 						state.board.appendChild(<currentVertex x={_eventdata.vertex.@x} y={_eventdata.vertex.@y} />);
@@ -440,7 +443,7 @@
 							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
 							id="'board.placeVertexDevelopment.send'">
 							
-						<param name="color" expr="state.board.player[state.board.currentPlayer].color.text()" />
+						<param name="color" expr="state.board.players.player[state.board.currentPlayer].color.text()" />
 						<param name="x" expr="_eventdata.vertex.@x >>> 0" />
 						<param name="y" expr="_eventdata.vertex.@y >>> 0" />
 						<param name="type" expr="'settlement'" />
@@ -449,7 +452,7 @@
 			</state>
 			
 			<state id="placement.buildSettlement.buildRoad">
-				<transition event="board.edgeClick" cond="_eventdata.player.text() != state.board.player[state.board.currentPlayer].playerId.text()">
+				<transition event="board.edgeClick" cond="_eventdata.player.text() != state.board.players.player[state.board.currentPlayer].playerId.text()">
 					<game:error message="You are not the active player." />
 					<script>log.error("You are not the current player.");</script>
 				</transition>
@@ -467,15 +470,15 @@
 				</transition>
 				<transition event="board.edgeClick" target="placement.buildSettlement.nextPlayerOrPhase">
 					<script>//<![CDATA[
-						util.placeEdgeDevelopment(state.board, "road", state.board.player[state.board.currentPlayer].color.text(), _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2);
+						util.placeEdgeDevelopment(state.board, "road", state.board.players.player[state.board.currentPlayer].color.text(), _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2);
 						delete state.board.currentVertex;
 					//]]></script>
 					<send 	event="'board.placeEdgeDevelopment'" 
 							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
 							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
-							id="'board.placeVertexDevelopment.send'">
+							id="'board.placeEdgeDevelopment.send'">
 							
-						<param name="color" expr="state.board.player[state.board.currentPlayer].color.text()" />
+						<param name="color" expr="state.board.players.player[state.board.currentPlayer].color.text()" />
 						<param name="x1" expr="_eventdata.edge.@x1 >>> 0" />
 						<param name="y1" expr="_eventdata.edge.@y1 >>> 0" />
 						<param name="x2" expr="_eventdata.edge.@x2 >>> 0" />
@@ -486,12 +489,12 @@
 			</state>
 			
 			<state id="placement.buildSettlement.nextPlayerOrPhase">
-				<transition cond="state.board.firstPlacement == 'true' &amp;&amp; (state.board.currentPlayer.text() >>> 0) + 1 &lt; state.board.player.length()" target="placement.buildSettlement">
+				<transition cond="state.board.firstPlacement == 'true' &amp;&amp; (state.board.currentPlayer.text() >>> 0) + 1 &lt; state.board.players.player.length()" target="placement.buildSettlement">
 					<script>//<![CDATA[
 						state.board.currentPlayer = (state.board.currentPlayer.text() >>> 0) + 1;
 					//]]></script>
 				</transition>
-				<transition cond="state.board.firstPlacement == 'true' &amp;&amp; (state.board.currentPlayer.text() >>> 0) + 1 >= state.board.players.length()" target="placement.buildSettlement">
+				<transition cond="state.board.firstPlacement == 'true' &amp;&amp; (state.board.currentPlayer.text() >>> 0) + 1 >= state.board.players.player.length()" target="placement.buildSettlement">
 					<script>//<![CDATA[
 						state.board.firstPlacement = 'false';
 					//]]></script>
@@ -512,7 +515,7 @@
 	</state>
 	<state id="main" initial="main.rollDice">
 		<state id="main.rollDice">
-			<transition event="board.diceClick" cond="_eventdata.player.text() != state.board.player[state.board.currentPlayer].playerId.text()">
+			<transition event="board.diceClick" cond="_eventdata.player.text() != state.board.players.player[state.board.currentPlayer].playerId.text()">
 				<game:error message="You are not the current player." />
 				<script>log.error("You are not the current player.");</script>
 			</transition>
@@ -526,13 +529,7 @@
 					state.board.appendChild(<dice><die value={die0} /><die value={die1} /></dice>);
 					
 				//]]></script>
-				<send 	event="'board.diceRolled'" 
-						target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
-						targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
-						id="'board.diceRolled.send'">
-					
-					<param name="diceValues" expr="var ret = ''; for each(var die in state.board.dice.die) { ret += die.@value + ' '; } ret;" />
-				</send>
+				
 			</transition>
 		</state>
 		<state id="main.checkDiceRoll">
@@ -562,14 +559,14 @@
 						for each(var vert in adjacent) {
 							for each(var dev in vert.development) {
 								log.info("trying to distribute resources: player: " + dev.@color + ", type: " + poly.@type);
-								log.info("player: " + state.board.player.(color.text() == dev.@color).toXMLString());
+								log.info("player: " + state.board.players.player.(color.text() == dev.@color).toXMLString());
 								log.info("resource type: " + state.board.polytypes.polytype.(@type == poly.@type).@produces.text());
 								
 								var resourceType = state.board.polytypes.polytype.(@type == poly.@type).@produces.text();
 								
-								log.info("player resource: " + state.board.player.(color.text() == dev.@color).resources.resource.(@type == resourceType).toXMLString());
+								log.info("player resource: " + state.board.players.player.(color.text() == dev.@color).resources.resource.(@type == resourceType).toXMLString());
 								
-								var pr = state.board.player.(color.text() == dev.@color).resources.resource.(@type == resourceType);
+								var pr = state.board.players.player.(color.text() == dev.@color).resources.resource.(@type == resourceType);
 								
 								if(dev.@type == "settlement") {
 									pr.@count = parseInt(pr.@count) + 1;
@@ -585,9 +582,18 @@
 			<transition target="main.build" />
 		</state>
 		<state id="main.build">
+			<onentry>
+				<send 	event="'board.diceRolled'" 
+						target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+						targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+						id="'board.diceRolled.send'">
+					
+					<param name="diceValues" expr="var ret = ''; for each(var die in state.board.dice.die) { ret += die.@value + ' '; } ret;" />
+				</send>
+			</onentry>
 			<transition event="board.endTurn" target="main.rollDice">
 				<script>//<![CDATA[
-					state.board.currentPlayer = (parseInt(state.board.currentPlayer) + 1) % state.board.player.length();
+					state.board.currentPlayer = (parseInt(state.board.currentPlayer) + 1) % state.board.players.player.length();
 				//]]></script>
 			</transition>
 		</state>

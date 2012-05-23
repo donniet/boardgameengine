@@ -289,6 +289,7 @@ BoardView.prototype.renderPort = function(port, prev, svgEl) {
     	g.appendChild(l2);
     	
     	var c = svgEl.ownerDocument.createElementNS(this.svgns_, "circle");
+    	c.setAttribute("class", "port-marker");
     	c.setAttribute("cx", pp.x);
     	c.setAttribute("cy", pp.y);
     	c.setAttribute("r", this.edgeLength_ * 0.2);
@@ -317,8 +318,24 @@ BoardView.prototype.renderPort = function(port, prev, svgEl) {
 	    g.appendChild(gtext);
 	    
 	    svgEl.appendChild(g);
-    	
+    
+	    this.renderPortHitArea(port, pp.x, pp.y, g);
     }
+}
+BoardView.prototype.renderPortHitArea = function (port, px, py, svgEl) {
+
+    var c = svgEl.ownerDocument.createElementNS(this.svgns_, "circle");
+    c.setAttribute("cx", px);
+    c.setAttribute("cy", py);
+    c.setAttribute("r", this.edgeLength_ * 0.25);
+    c.setAttribute("class", "port-hit-area");
+
+    var self = this;
+    c.onclick = function (evt) { Event.fire(self, "portclick", [port, evt]); };
+    c.onmouseover = function (evt) { Event.fire(self, "portover", [port, evt]); };
+    c.onmouseout = function (evt) { Event.fire(self, "portout", [port, evt]); };
+
+    svgEl.appendChild(c);
 }
 BoardView.prototype.renderVertexDevelopment = function (vertex, vertexDevelopment, svgEl) {
     var n = svgEl.firstChild;

@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<link type="text/css" rel="stylesheet" href="/css/game.css"></link>
+<link type="text/css" rel="stylesheet" href="/css/pilgrims.css"></link>
 <script type="text/javascript" src="/js/lib/jquery-1.7.1.min.js"></script>
 <script type="text/javascript" src="/js/lib/event.js"></script> 
 <script type="text/javascript" src="/_ah/channel/jsapi"></script>
@@ -13,13 +13,14 @@
 <script type="text/javascript" src="/js/view/diceView.js"></script>
 <script type="text/javascript" src="/js/view/boardView.js"></script>
 <script type="text/javascript" src="/js/view/playersView.js"></script>
+<script type="text/javascript" src="/js/view/resourcesView.js"></script>
 <script type="text/javascript" src="/js/view/layout.js"></script>
 <script type="text/javascript">//<![CDATA[
 
 function handleLoad() {
 	var channeltoken = "${channeltoken}";
 	//var board = new Board(channeltoken, "/game/${gameid}/datamodel/${boarddatamember}");
-	var board = new Board(channeltoken, "${boarddatamemberurl}", "${boardactionurl}");
+	var board = new Board(channeltoken, "${boarddatamemberurl}", "${boardactionurl}", "${gamedetailsurl}");
 	
 	var layout = new Layout();
 	
@@ -49,6 +50,18 @@ function handleLoad() {
 		);
 		Event.addListener(responder, "error", handleActionError);
 	});
+	Event.addListener(boardView, "portclick", function(port, evt) { 
+		var responder = board.sendAction("portClick", 
+			{"port": {"x": port.x_, "y": port.y_}}
+		); 
+		Event.addListener(responder, "error", handleActionError);
+	});
+	Event.addListener(boardView, "hexclick", function(hex, evt) { 
+		var responder = board.sendAction("hexClick", 
+			{"hex": {"x": hex.x_, "y": hex.y_}}
+		); 
+		Event.addListener(responder, "error", handleActionError);
+	});
 	Event.addListener(boardView, "diceclick", function() {
 		console.log("board.jsp diceclick handler");
 		var responder = board.sendAction("diceClick");
@@ -59,14 +72,25 @@ function handleLoad() {
 		var responder = board.sendAction("playerClick", [p.playerId_, p.color_]);
 		Event.addListener(responder, "error", handleActionError);
 	});
-	
-	layout.addItem(document.getElementById("header"), "top", 200);
-	layout.addItem(document.getElementById("game-board"), "center");
-	layout.addItem(document.getElementById("players"), "right");
-
-	$('#endTurnButton').click(function() {
-		board.sendAction("endTurn");
+	Event.addListener(playersView, "resourceclick", function(p, r) {
+		console.log("resource click: " + p.color_ + " --> " + r);
+		var responder = board.sendAction("resourceClick", [p.playerId_, p.color_, r]);
+		Event.addListener(responder, "error", handleActionError);
 	});
+	Event.addListener(board, "diceRolled", function(dice) {
+		$("#game-board").empty();
+		$("#players").empty();
+		board.load();
+	});
+	$('#endTurnButton').click(function() {
+		var responder = board.sendAction("endTurn");
+		Event.addListener(responder, "error", handleActionError);		
+	});
+	
+	layout.addItem(document.getElementById("header"), "top", 125);
+	layout.addItem(document.getElementById("players"), "right", 200);
+	layout.addItem(document.getElementById("game-board"), "center");
+
 
 	board.load();
 }
@@ -83,7 +107,7 @@ $(handleLoad);
 </head>
 <body>
 <div id="header">
-<h1>Game: ${gameid}, Board Data Member: ${boarddatamember}</h1>
+<!--  <h1>Game: ${gameid}, Board Data Member: ${boarddatamember}</h1> -->
 
 <form action="${joingameurl}" method="post">
 	<input type="submit" value="JOIN" />

@@ -9,6 +9,10 @@ http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
 		<servlet-class>org.boardgameengine.GameServlet</servlet-class>
 	</servlet>
 	<servlet>
+		<servlet-name>ChannelPresenceServlet</servlet-name>
+		<servlet-class>org.boardgameengine.ChannelPresenceServlet</servlet-class>
+	</servlet>
+	<servlet>
 		<servlet-name>CreateGame</servlet-name>
 		<servlet-class>org.boardgameengine.CreateGame</servlet-class>
 	</servlet>
@@ -20,6 +24,10 @@ http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
 	<servlet-mapping>
 		<servlet-name>Board</servlet-name>
 		<url-pattern>/WEB-INF/board.jsp</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>ChannelPresenceServlet</servlet-name>
+		<url-pattern>/_ah/channel/*</url-pattern>
 	</servlet-mapping>
 	<servlet-mapping>
 		<servlet-name>Game</servlet-name>

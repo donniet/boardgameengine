@@ -42,6 +42,30 @@ function JsonToXML(obj, node, doc, ns, maxDepth) {
 	}
 }
 
+function SerializeAsyncCalls(asyncFunctions) {
+	var current = 0;
+	var responder = null;
+	
+	var ret = new Object();
+	
+	var handler = function() {		
+		delete responder;
+		if(current < asyncFunctions.length) {
+			var cur = asyncFunctions[current++];
+			
+			responder = cur.func.apply(cur.scope, arguments);
+			
+			Event.addListener(responder, cur.event, handler);
+		}
+		else {
+			Event.fire(ret, "complete", arguments);
+		}
+	}
+	
+	handler();
+	return ret;
+}
+
 function getTextContent(xml) {
 	if(!xml) return null;
 	
@@ -76,10 +100,11 @@ function boardNsResolver(prefix) {
 }
 
 
-function Board(token, boardUrl, actionUrl) {
+function Board(token, boardUrl, actionUrl, detailsUrl) {
 	this.modelElements_ = new Object();
 	this.boardUrl_ = boardUrl;
 	this.actionUrl_ = actionUrl;
+	this.detailsUrl_ = detailsUrl;
 	this.userToken_ = token;
 	this.channel_ = null;
 	this.socket_ = null;
@@ -155,7 +180,7 @@ Board.prototype.handleDiceRoll = function(params) {
 			this.dice_.push(parseInt(values[i]));
 	}
 	console.log("handleDiceRoll: " + (this.dice_[0] + this.dice_[1]));
-	Event.fire(this, "diceRolled");
+	Event.fire(this, "diceRolled", [this.dice_]);
 }
 
 Board.prototype.handlePlaceVertexDevelopment = function(params) {
@@ -237,11 +262,27 @@ Board.prototype.sendAction = function(action, data) {
 
 Board.prototype.load = function() {
 	var self = this;
+	
+	var responder = SerializeAsyncCalls([
+	    { func: this.loadBoard,   event: "load", scope: this },
+	    { func: this.loadDetails, event: "load", scope: this }
+	]);
+	
+	Event.addListener(responder, "complete", function() {
+		self.createChannel();
+		Event.fire(self, "load", [self]);
+	});
+}
+
+Board.prototype.loadBoard = function() {
+	var self = this;
 	var responder = new Object();
 	
+	// load board xml
 	jQuery.ajax(this.boardUrl_, {
 		async: true,
 		cache: false,
+		context: this,
 		complete: function(xhr, status) {
 			var xml = xhr.responseXML;
 			var boardnode = null;
@@ -251,15 +292,55 @@ Board.prototype.load = function() {
 			boardnode = evaluator.evaluate("//scxml:data/game:board", xml, boardNsResolver, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
 
 			if(!boardnode || !boardnode.singleNodeValue) {
-				Event.fire(self, "loaderror", []);
+				Event.fire(responder, "error", []);
 			}
 			else {
-				self.loadXML(boardnode.singleNodeValue);
-				self.createChannel();
-				Event.fire(self, "load", [self]);
+				this.loadXML(boardnode.singleNodeValue);
+				Event.fire(responder, "load", []);
 			}
+			
 		},
 	});
+	
+	return responder;
+}
+
+Board.prototype.loadDetails = function() {
+	var self = this;
+	var responder = new Object();
+	
+	jQuery.ajax(this.detailsUrl_, {
+		async: true,
+		cache: false,
+		context: this,
+		dataType: "json",
+		success: function(data, status, xhr) {
+			this.handleLoadDetails(data);			
+			Event.fire(responder, "load", []);
+		},
+		error: function() {
+			Event.fire(responder, "error", []);
+		}
+	});
+	
+	return responder;
+}
+
+Board.prototype.handleLoadDetails = function(details) {
+	console.log("handling details...");
+	
+	for(var i = 0; i < this.player_.length; i++) {
+		var p = this.player_[i];
+		console.log(p.color_);
+		for(var j = 0; j < details.players.length; j++) {
+			var dp = details.players[j];
+			
+			if(p.color_ == dp.role) {
+				p.hashedEmail_ = dp.gameUser.hashedEmail;
+				console.log(p.color_ + ": " + p.hashedEmail_);
+			}
+		}
+	}
 }
 
 Board.prototype.loadXML = function(xml) {
@@ -268,11 +349,7 @@ Board.prototype.loadXML = function(xml) {
 		"verteces": this.loadVerteces,
 		"edges": this.loadEdges,
 		"ports": this.loadPorts,
-		"player": function(n) {
-			var p = new Player();
-			p.loadXML(n);
-			this.player_.push(p);
-		},
+		"players": this.loadPlayers,
 		"polytypes": this.loadPolytypes,
 		"currentPlayer": function(n) {
 			this.currentPlayer_ = parseInt(getTextContent(n));
@@ -284,6 +361,16 @@ Board.prototype.loadXML = function(xml) {
 			};
 		},
 		"dice": this.loadDice
+	}, this);
+}
+
+Board.prototype.loadPlayers = function(xml) {
+	forChildNodes(xml, {
+		"player": function(n) {
+			var p = new Player();
+			p.loadXML(n);
+			this.player_.push(p);
+		}
 	}, this);
 }
 
@@ -367,13 +454,21 @@ Player.prototype.loadXML = function(xml) {
 			};
 			this.developments_.push(d);
 		},
+		"resources": this.loadResources
+	}, this);
+};
+Player.prototype.getResources = function() {
+	return this.resources_;
+}
+Player.prototype.loadResources = function(xml) {
+	forChildNodes(xml, {
 		"resource": function(n) {
 			var pr = new PlayerResource();
 			pr.loadXML(n);
 			this.resources_.push(pr);
 		}
 	}, this);
-};
+}
 
 function PlayerResource() {}
 PlayerResource.prototype.loadXML = function(xml) {
