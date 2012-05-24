@@ -146,6 +146,7 @@ function Board(token, boardUrl, actionUrl, detailsUrl) {
 	this.userToken_ = token;
 	this.channel_ = null;
 	this.socket_ = null;
+	this.gameDetails_ = null;
 		
 	this.poly_ = new Array();
 	this.edge_ = new Array();

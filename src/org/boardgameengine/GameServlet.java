@@ -225,10 +225,7 @@ public class GameServlet extends HttpServlet {
 				}
 				
 				log.info(String.format("state date: %s", gs.getStateDate()));
-				
-				//gs.refreshDatamodel();
-				//gs.detatch();
-				
+								
 				List<GameStateData> datamodel = gs.getDatamodel();
 				
 				GameStateData gsd = null;
@@ -583,7 +580,7 @@ public class GameServlet extends HttpServlet {
 		
 		postHandlers_.add(new PatternHandlerPair(handler, p));
 	}
-	
+		
 	public void doGet(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
 		
@@ -591,24 +588,33 @@ public class GameServlet extends HttpServlet {
 		
 		String thisURL = req.getRequestURI();
 		
-		if(req.getUserPrincipal() == null) {
-			resp.sendRedirect(userService.createLoginURL(thisURL));
-		}
-		else {
-			for(PatternHandlerPair p : gethandlers_) {
-				Matcher m = p.pattern.matcher(req.getPathInfo());
-				if(m != null && m.matches()) {
+		boolean authenticated = (req.getUserPrincipal() != null);
+		
+		for(PatternHandlerPair p : gethandlers_) {
+			Matcher m = p.pattern.matcher(req.getPathInfo());
+			if(m != null && m.matches()) {
+				if(authenticated || !p.handler.getAuthenticationRequired()) {
 					p.handler.handle(req, resp, m);
 					return;
 				}
+				else if(p.handler.getSignInIfNotAuthenticated()) {
+					resp.sendRedirect(userService.createLoginURL(req.getPathInfo()));
+					return;
+				}
+				else {
+					resp.setStatus(401);
+					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
+						resp.getWriter().println("You are not authenticated.");
+					return;
+				}
 			}
-	
-			resp.setStatus(404);
-			if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
-				resp.getWriter().println("The page does not match the request regex: " + req.getPathInfo());
-		
-			return;
 		}
+		
+		resp.setStatus(404);
+		if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
+			resp.getWriter().println("The page does not match the request regex: " + req.getPathInfo());
+	
+		return;
 	}
 
 	public void doPost(HttpServletRequest req, HttpServletResponse resp)

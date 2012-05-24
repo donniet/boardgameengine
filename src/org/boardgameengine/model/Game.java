@@ -288,13 +288,14 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 				
 				GameUser gameUser = GameUser.findByHashedUserId(playerid);
 				
-				if(gameUser == null) {
-					//TODO: this is bad-- not sure what to do here...
-				}
-				else {
+				if(gameUser != null) {
 					addPlayer(gameUser, role);
 					success = true;
 					isError_ = false;
+				}
+				else {
+					isError_ = true;
+					errorMessage_ = "invalid player id, likely a problem with the scxml game rules";
 				}
 			}
 			else if(event.equals("game.error")) {
@@ -383,17 +384,6 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 			return;
 		}
 		
-			
-		/*
-		Map<String,Object> message = new HashMap<String,Object>();
-		message.put("event", event);
-		message.put("params", params);
-		
-		JSONSerializer json = new JSONSerializer();
-		
-		String strmessage = json.transform(new JsFunctionJsonTransformer(), Function.class, Scriptable.class).include("actions").serialize(message);		
-		*/
-		
 		ChannelService channelService = ChannelServiceFactory.getChannelService();
 		
 		List<Watcher> watchers = getWatchers();
@@ -447,9 +437,7 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 			ret = (Game)PMF.executeCommandInTransaction(new PersistenceCommand() {
 				@Override
 				public Object exec(PersistenceManager pm) {
-					Game g = pm.getObjectById(Game.class, key);
-					if(g != null) pm.makeTransient(g);
-					return g;
+					return pm.getObjectById(Game.class, key);
 				}
 			});
 		}
@@ -487,10 +475,7 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 			ret = (GameUser)PMF.executeCommandInTransaction(new PersistenceCommand() {
 				@Override
 				public Object exec(PersistenceManager pm) {
-					GameUser ret = pm.getObjectById(GameUser.class, owner);
-					if(ret != null) 
-						pm.makeTransient(ret);
-					return ret;
+					return pm.getObjectById(GameUser.class, owner);
 				}
 			});
 		}
@@ -525,9 +510,7 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 					List<GameState> results = (List<GameState>)q.execute(param);
 					
 					if(results.size() > 0) {
-						GameState gs = results.get(0);
-						pm.makeTransient(gs);
-						return gs;
+						return results.get(0);
 					}
 					else {
 						return null;

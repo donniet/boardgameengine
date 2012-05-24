@@ -52,9 +52,7 @@ public class GameType {
 					
 					List<GameType> results = (List<GameType>)q.execute(typeName);
 					if(results.size() > 0) {
-						GameType gt = results.get(0);
-						pm.makeTransient(gt);
-						return gt;
+						return results.get(0);
 					}
 					else {
 						return null;
@@ -77,10 +75,7 @@ public class GameType {
 			ret = (GameType)PMF.executeCommandInTransaction(new PersistenceCommand() {
 				@Override
 				public Object exec(PersistenceManager pm) {
-					GameType gt = pm.getObjectById(GameType.class, key);
-					if(gt != null)
-						pm.makeTransient(gt);
-					return gt;
+					return pm.getObjectById(GameType.class, key);
 				}
 			});
 		}

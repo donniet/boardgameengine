@@ -47,10 +47,7 @@ public class GameUser extends ScriptableObject {
 			ret = (GameUser)PMF.executeCommandInTransaction(new PersistenceCommand() {
 				@Override
 				public Object exec(PersistenceManager pm) {
-					GameUser gu = pm.getObjectById(GameUser.class, key);
-					if(gu != null) 
-						pm.makeTransient(gu);
-					return gu;
+					return pm.getObjectById(GameUser.class, key);
 				}
 			});
 		}
@@ -85,14 +82,12 @@ public class GameUser extends ScriptableObject {
 					
 					if(results.size() > 0) {
 						ret = results.get(0);
-						pm.makeTransient(ret);
-						return ret;
 					}
-					
-					// ok it must not exist, make one...
-					ret = new GameUser(user);
-					pm.makePersistent(ret);
-					//pm.makeTransient(ret);
+					else {
+						// ok it must not exist, make one...
+						ret = new GameUser(user);
+						pm.makePersistent(ret);
+					}
 					
 					return ret;
 				}

@@ -8,6 +8,12 @@
 		default xml namespace = g;
 		
 		util = {
+			parseCost: function(cost) {
+				var re = /([0-9]+)\s+([A-Za-z\_][A-Za-z\_0-9]*)/;
+			}
+			isCurrentPlayer: function(board, playerId) {
+				return playerId == board.players.player[board.currentPlayer].playerId.text()
+			},
 			concatenateNodeValues: function(nodeList, child, delim) {
 				if(typeof delim != "string") delim = " ";
 				
@@ -193,6 +199,17 @@
 			},
 			hasDevelopment: function(obj) {
 				return !!obj && !!obj.development && obj.development.length() > 0;
+			},
+			getVertexDevelopment: function(board, x, y) {
+				var vert = findVertex(board, x, y);
+				if(vert) {
+					return vert.development[0];
+				}
+				else {
+					return null;
+				}
+			},
+			checkVertexDevelopment: function(board, x, y, color, type) {
 			}
 			
 		};
@@ -265,6 +282,11 @@
 					<resource type="Brick" />
 					<resource type="Wood" />
 				</resources>
+				<developments>
+					<development type="settlement" cost="1 Grain, 1 Wool, 1 Brick, 1 Wood" />
+					<development type="city" cost="3 Ore, 2 Grain" />
+					<development type="road" cost="1 Wood, 1 Brick" />
+				</developments>
 			</template>
 			<board xmlns="http://www.pilgrimsofnatac.com/schemas/game.xsd"></board>
 		</data>
@@ -400,7 +422,7 @@
 	<state id="placement" initial="placement.buildSettlement">
 		<state id="placement.buildSettlement" initial="placement.buildSettlement.build">
 			<state id="placement.buildSettlement.build">
-				<transition event="board.vertexClick" cond="_eventdata.player.text() != state.board.players.player[state.board.currentPlayer].playerId.text()">
+				<transition event="board.vertexClick" cond="!util.isCurrentPlayer(state.board, _eventdata.player.text())">
 					<game:error message="You are not the current player." />
 					<script>log.error("You are not the current player.");</script>
 				</transition>
@@ -597,11 +619,38 @@
 					<param name="diceValues" expr="var ret = ''; for each(var die in state.board.dice.die) { ret += die.@value + ' '; } ret;" />
 				</send>
 			</onentry>
-			<transition event="board.endTurn" target="main.rollDice">
+			<transition event="board.vertexClick" cond="!util.isCurrentPlayer(_eventdata.player.text())">
+				<game:error message="You are not the current player." />
+			</transition>
+			<transition event="board.vertexClick" cond="util.getVertexDevelopment(state.board, _eventdata.x, _eventdata.y) != null">
+				<send 	event="'board.developmentSelected'"
+						targettype="'http://www.w3.org/TR/scxml/#SCXMLEventProcessor'"
+						target="'#_internal'"
+						id="'board.developmentSelected.send'">
+					<param name="player" expr="board.players.player[board.currentPlayer]" />
+					<param name="vertex" expr="util.findVertex(state.board, _eventdata.x, _eventdata.y)" />
+					<param name="development" expr="util.getVertexDevelopment(state.board, _eventdata.x, _eventdata.y)" />
+				</send>
+			</transition>
+			
+			<transition event="board.developmentSelected" cond="_eventdata.development.@color != _eventdata.player.color.text()">
+				<game:error message="This is not your development" />
+			</transition>
+			<transition event="board.developmentSelected" cond="_eventdata.development.@type != 'settlement'">
+				<game:error message="This development is not a settlement" />
+			</transition>
+			<!--  try to upgrade to a city -->
+			<transition event="board.developmentSelected" cond="">
+				<game:error message="This development is not a settlement" />
+			</transition>
+						
+					
+			<transition event="board.endTurn" cond="util.isCurrentPlayer(_eventdata.player.text())" target="main.rollDice">
 				<script>//<![CDATA[
 					state.board.currentPlayer = (parseInt(state.board.currentPlayer) + 1) % state.board.players.player.length();
 				//]]></script>
 			</transition>
+			
 		</state>
 		
 	</state>

@@ -59,10 +59,7 @@ public class Player extends ScriptableObject {
 				gameUser = (GameUser)PMF.executeCommandInTransaction(new PersistenceCommand() {
 					@Override
 					public Object exec(PersistenceManager pm) {
-						GameUser ret = pm.getObjectById(GameUser.class, gameUserKey);
-						if(ret != null)
-							pm.makeTransient(ret);
-						return ret;
+						return pm.getObjectById(GameUser.class, gameUserKey);
 					}
 				});
 			}
@@ -85,22 +82,6 @@ public class Player extends ScriptableObject {
 
 	public void setConnected(boolean connected) {
 		this.connected = connected;
-	}
-	
-	public void makePersistent() {
-		final Player persist = this; 
-		try {
-			PMF.executeCommandInTransaction(new PersistenceCommand() {
-				@Override
-				public Object exec(PersistenceManager pm) {
-					pm.makePersistent(persist);
-					return null;
-				}
-			});
-		}
-		catch(PersistenceCommandException e) {
-			e.printStackTrace();
-		}
 	}
 	
 	//scriptable object stuff

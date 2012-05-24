@@ -61,13 +61,26 @@ public class ChannelPresenceServlet extends HttpServlet {
 		List<Player> players = game.getPlayers();
 		
 		for(Iterator<Player> i = players.iterator(); i.hasNext();) {
-			Player p = i.next();
+			final Player p = i.next();
 			
 			GameUser gu = p.getGameUser();
 			
 			if(gu.getKey().equals(w.getGameUserKey())) {
 				p.setConnected(presence.isConnected());
-				p.makePersistent();
+				
+				try {
+					PMF.executeCommandInTransaction(new PersistenceCommand() {
+						@Override
+						public Object exec(PersistenceManager pm) {
+							pm.makePersistent(p);
+							return null;
+						}
+					});
+				}
+				catch(PersistenceCommandException e) {
+					//TODO: handle exception
+					e.printStackTrace();
+				}
 			}
 			
 		}

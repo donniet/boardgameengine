@@ -116,9 +116,7 @@ public class Watcher extends ScriptableObject {
 					List<Watcher> results = (List<Watcher>)q.execute(gameIn.getKey(), gameUserIn.getKey());
 					
 					if(results.size() > 0) {
-						Watcher w = results.get(0);
-						pm.makeTransient(w);
-						return w;
+						return results.get(0);
 					}
 					else {
 						return null;
@@ -180,9 +178,7 @@ public class Watcher extends ScriptableObject {
 			ret = (GameUser)PMF.executeCommandInTransaction(new PersistenceCommand() {
 				@Override
 				public Object exec(PersistenceManager pm) {
-					GameUser gu = pm.getObjectById(GameUser.class, gameUser);
-					if(gu != null) pm.makeTransient(gu);
-					return gu;
+					return pm.getObjectById(GameUser.class, gameUser);
 				}
 			});
 		}
