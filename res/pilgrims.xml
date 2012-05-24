@@ -9,8 +9,56 @@
 		
 		util = {
 			parseCost: function(cost) {
-				var re = /([0-9]+)\s+([A-Za-z\_][A-Za-z\_0-9]*)/;
-			}
+				var re = /\s*([0-9]+)\s+([A-Za-z\_][A-Za-z\_0-9]*)\s*/;
+				
+				var ret = new Array();
+				
+				var costarr = cost.split(",");
+				for(var i = 0; i < costarr.length; i++) {
+					var c = costarr[i];
+					var m = re.exec(c);
+					if(m) {
+						ret.push({"resource": m[2], "amount": parseInt(m[1])});
+					}
+				}
+				
+				return ret;
+			},
+			checkPlayerResourcesAgainstCost: function(player, costStr) {
+				var cost = util.parseCost(costStr);
+				
+				var ret = true;
+				for(var i = 0; ret && i < cost.length; i++) {
+					var c = cost[i];
+					
+					var resource = player.resources.resource.(@type == c.resource)[0];
+					if(!resource) {
+						ret = false;
+					}
+					else {
+						var count = parseInt(resource.@count);
+					
+						ret = ret && (count > c.amount);
+					}
+				}
+				return ret;
+			},
+			debitPlayerResourcesByCost: function(player, costStr) {
+				var cost = util.parseCost(costStr);
+				
+				for(var i = 0; ret && i < cost.length; i++) {
+					var c = cost[i];
+					
+					var resource = player.resources.resource.(@type == c.resource)[0];
+					
+					if(!resource) {
+						throw "Resource not found: " + c.resource;
+					}
+					else {
+						resource.@count = parseInt(resource.@count) - c.amount;
+					}
+				}
+			},
 			isCurrentPlayer: function(board, playerId) {
 				return playerId == board.players.player[board.currentPlayer].playerId.text()
 			},
@@ -64,7 +112,9 @@
 					<point x={0 + x} y={1 + y} />
 					</>;
 			},
-			instantiateTemplate: function(board, template) {				
+			instantiateTemplate: function(board, template) {	
+				board.appendChild(template.developments);
+							
 				for(var i = 0; i < template.polys.poly.length(); i++) {
 					var p = template.polys.poly[i];
 					
@@ -637,12 +687,34 @@
 				<game:error message="This is not your development" />
 			</transition>
 			<transition event="board.developmentSelected" cond="_eventdata.development.@type != 'settlement'">
-				<game:error message="This development is not a settlement" />
+				<game:error message="This development is not a settlement and cannot be upgraded" />
 			</transition>
 			<!--  try to upgrade to a city -->
-			<transition event="board.developmentSelected" cond="">
-				<game:error message="This development is not a settlement" />
+			<transition event="board.developmentSelected" cond="!util.checkPlayerResourcesAgainstCost(_eventdata.player, state.board.developments.development.(@type == 'city'))">
+				<game:error message="You do not have enough resources to upgrade this settlement to a city" />
 			</transition>
+			<transition event="board.developmentSelected" cond="!util.checkPlayerResourcesAgainstCost(_eventdata.player, state.board.developments.development.(@type == 'city').@cost)">
+				<game:error message="You do not have enough resources to upgrade this settlement to a city" />
+			</transition>
+			<transition event="board.developmentSelected" target="main.build">
+				<script>//<![CDATA[
+					util.debitPlayerResourcesByCost(_eventdata.player, tate.board.developments.development.(@type == 'city').@cost);
+					delete vertex.development
+					util.placeVertexDevelopment(state.board, "city", player.color.text(),  vertex.@x, vertex.@y);
+						
+				//]]></script>
+				<send 	event="'board.placeVertexDevelopment'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.placeVertexDevelopment.send'">
+							
+						<param name="color" expr="state.board.players.player[state.board.currentPlayer].color.text()" />
+						<param name="x" expr="vertex.@x >>> 0" />
+						<param name="y" expr="vertex.@y >>> 0" />
+						<param name="type" expr="'city'" />
+				</send>
+			</transition>
+			
 						
 					
 			<transition event="board.endTurn" cond="util.isCurrentPlayer(_eventdata.player.text())" target="main.rollDice">
