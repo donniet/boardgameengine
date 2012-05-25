@@ -246,6 +246,18 @@ Board.prototype.handleResourcesDistributed = function(event) {
 	Event.fire(this, "resourcesUpdated", [this.players_]);
 }
 
+Board.prototype.replacePlayer = function(newPlayer) {
+	for(var i = 0; i < this.player_.length; i++) {
+		var tp = this.player_[i];
+		if(newPlayer.color_ == tp.color_) {
+			delete this.player_[i];
+			this.player_[i] = newPlayer;
+			return true;
+		}
+	}
+	return false;
+}
+
 Board.prototype.handlePlaceVertexDevelopment = function(event) {
 	var d = new Development();
 	d.count_ = 1;
@@ -261,10 +273,27 @@ Board.prototype.handlePlaceVertexDevelopment = function(event) {
 		}
 	}
 	console.log("handleSocketMessage: found: " + vertex);
-	if(vertex != null) {
-		vertex.development_.push(d);
-		Event.fire(this, "placeVertexDevelopment", [vertex, d]);
+	if(vertex == null) {
+		console.log("pretty serious problem vertex not found.");
+		return;
 	}
+
+	vertex.development_.push(d);
+	
+	if(event.content != null) {
+		//content may include player XML
+		forChildNodes(event.content, {
+			"player": function(xml) {
+				var p = new Player();
+				p.loadXML(xml);
+				
+				this.replacePlayer(p);
+			}
+		}, this);
+		Event.fire(this, "resourcesUpdated", [this.player_]);
+	}
+	
+	Event.fire(this, "placeVertexDevelopment", [vertex, d]);
 }
 Board.prototype.handlePlaceEdgeDevelopment = function(event) {
 	var d = new Development();
@@ -281,10 +310,28 @@ Board.prototype.handlePlaceEdgeDevelopment = function(event) {
 		}
 	}
 	console.log("handleSocketMessage: found: " + edge);
-	if(edge != null) {
-		edge.development_.push(d);
-		Event.fire(this, "placeEdgeDevelopment", [edge, d]);
+	
+	if(edge == null) {
+		console.log("pretty serious edge not found");
+		return;
 	}
+	
+	edge.development_.push(d);
+	
+	if(event.content != null) {
+		//content may include player XML
+		forChildNodes(event.content, {
+			"player": function(xml) {
+				var p = new Player();
+				p.loadXML(xml);
+				
+				this.replacePlayer(p);
+			}
+		}, this);
+		Event.fire(this, "resourcesUpdated", [this.player_]);
+	}
+	
+	Event.fire(this, "placeEdgeDevelopment", [edge, d]);
 }
 
 Board.prototype.getDice = function() { return this.dice_; };
@@ -502,6 +549,8 @@ Board.prototype.loadEdges = function(xml) {
 function Player() {
 	this.developments_ = new Array();
 	this.resources_ = new Array();
+	this.color_ = null;
+	this.playerId_ = null;
 }
 Player.prototype.loadXML = function(xml) {
 	forChildNodes(xml, {
