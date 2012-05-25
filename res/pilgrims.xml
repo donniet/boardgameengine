@@ -12,8 +12,8 @@
 				var re = /\s*([0-9]+)\s+([A-Za-z\_][A-Za-z\_0-9]*)\s*/;
 				
 				var ret = new Array();
-				
-				var costarr = cost.split(",");
+								
+				var costarr = cost.toString().split(",");
 				for(var i = 0; i < costarr.length; i++) {
 					var c = costarr[i];
 					var m = re.exec(c);
@@ -46,7 +46,7 @@
 			debitPlayerResourcesByCost: function(player, costStr) {
 				var cost = util.parseCost(costStr);
 				
-				for(var i = 0; ret && i < cost.length; i++) {
+				for(var i = 0; i < cost.length; i++) {
 					var c = cost[i];
 					
 					var resource = player.resources.resource.(@type == c.resource)[0];
@@ -245,14 +245,17 @@
 				return board.edges.edge.((@x1==x1 && @y1==y1 && @x2==x2 && @y2==y2) || (@x1==x2 && @y1==y2 && @x2==x1 && @y2==y1))[0];
 			},
 			findVertex: function(board, x, y) {
-				return board.verteces.vertex.(@x==x && @y==y)[0];
+				return board.verteces.vertex.(@x==( x >>> 0) && @y== (y >>> 0))[0];
 			},
 			hasDevelopment: function(obj) {
 				return !!obj && !!obj.development && obj.development.length() > 0;
 			},
 			getVertexDevelopment: function(board, x, y) {
-				var vert = findVertex(board, x, y);
+				
+				var vert = util.findVertex(board, x, y);
 				if(vert) {
+					log.info("vertex: " + vert);
+					log.info("vertex.development: " + vert.development[0].toXMLString());
 					return vert.development[0];
 				}
 				else {
@@ -672,46 +675,45 @@
 			<transition event="board.vertexClick" cond="!util.isCurrentPlayer(_eventdata.player.text())">
 				<game:error message="You are not the current player." />
 			</transition>
-			<transition event="board.vertexClick" cond="util.getVertexDevelopment(state.board, _eventdata.x, _eventdata.y) != null">
+			<transition event="board.vertexClick" cond="util.getVertexDevelopment(state.board, _eventdata.vertex.@x, _eventdata.vertex.@y) != null">
 				<send 	event="'board.developmentSelected'"
 						targettype="'http://www.w3.org/TR/scxml/#SCXMLEventProcessor'"
 						target="'#_internal'"
 						id="'board.developmentSelected.send'">
-					<param name="player" expr="board.players.player[board.currentPlayer]" />
-					<param name="vertex" expr="util.findVertex(state.board, _eventdata.x, _eventdata.y)" />
-					<param name="development" expr="util.getVertexDevelopment(state.board, _eventdata.x, _eventdata.y)" />
+					<param name="player" expr="state.board.players.player[state.board.currentPlayer]" />
+					<param name="vertex" expr="util.findVertex(state.board, _eventdata.vertex.@x, _eventdata.vertex.@y)" />
+					<param name="development" expr="util.getVertexDevelopment(state.board, _eventdata.vertex.@x, _eventdata.vertex.@y)" />
+					<param name="origin" expr="_eventdata" />
 				</send>
 			</transition>
 			
-			<transition event="board.developmentSelected" cond="_eventdata.development.@color != _eventdata.player.color.text()">
+			<transition event="board.developmentSelected" cond="log.info('eventdata: ' + _eventdata) || _eventdata.development.@color != _eventdata.player.color.text()">
 				<game:error message="This is not your development" />
 			</transition>
 			<transition event="board.developmentSelected" cond="_eventdata.development.@type != 'settlement'">
 				<game:error message="This development is not a settlement and cannot be upgraded" />
 			</transition>
 			<!--  try to upgrade to a city -->
-			<transition event="board.developmentSelected" cond="!util.checkPlayerResourcesAgainstCost(_eventdata.player, state.board.developments.development.(@type == 'city'))">
-				<game:error message="You do not have enough resources to upgrade this settlement to a city" />
-			</transition>
 			<transition event="board.developmentSelected" cond="!util.checkPlayerResourcesAgainstCost(_eventdata.player, state.board.developments.development.(@type == 'city').@cost)">
 				<game:error message="You do not have enough resources to upgrade this settlement to a city" />
 			</transition>
 			<transition event="board.developmentSelected" target="main.build">
 				<script>//<![CDATA[
-					util.debitPlayerResourcesByCost(_eventdata.player, tate.board.developments.development.(@type == 'city').@cost);
-					delete vertex.development
-					util.placeVertexDevelopment(state.board, "city", player.color.text(),  vertex.@x, vertex.@y);
+					util.debitPlayerResourcesByCost(_eventdata.player, state.board.developments.development.(@type == 'city').@cost);
+					delete _eventdata.vertex.development
+					util.placeVertexDevelopment(state.board, "city", _eventdata.player.color.text(),  _eventdata.vertex.@x, _eventdata.vertex.@y);
 						
 				//]]></script>
 				<send 	event="'board.placeVertexDevelopment'" 
-							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
-							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
-							id="'board.placeVertexDevelopment.send'">
+						target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+						targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+						id="'board.placeVertexDevelopment.send'">
 							
 						<param name="color" expr="state.board.players.player[state.board.currentPlayer].color.text()" />
-						<param name="x" expr="vertex.@x >>> 0" />
-						<param name="y" expr="vertex.@y >>> 0" />
+						<param name="x" expr="_eventdata.vertex.@x >>> 0" />
+						<param name="y" expr="_eventdata.vertex.@y >>> 0" />
 						<param name="type" expr="'city'" />
+						<content expr="state.board.players.player[state.board.currentPlayer]" />
 				</send>
 			</transition>
 			
@@ -721,6 +723,13 @@
 				<script>//<![CDATA[
 					state.board.currentPlayer = (parseInt(state.board.currentPlayer) + 1) % state.board.players.player.length();
 				//]]></script>
+				<send 	event="'board.currentPlayerChanged'" 
+						target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+						targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+						id="'board.currentPlayerChanged.send'">
+					
+					<param name="currentPlayer" expr="state.board.currentPlayer.text()" />
+				</send>
 			</transition>
 			
 		</state>

@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.jdo.JDOHelper;
+import javax.jdo.ObjectState;
 import javax.jdo.PersistenceManager;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -42,7 +44,14 @@ public class ChannelPresenceServlet extends HttpServlet {
 				PMF.executeCommandInTransaction(new PersistenceCommand() {				
 					@Override
 					public Object exec(PersistenceManager pm) {
-						pm.deletePersistent(w);
+						ObjectState s = JDOHelper.getObjectState(w);
+						if(s == ObjectState.TRANSIENT || s == ObjectState.TRANSIENT_CLEAN || s == ObjectState.TRANSIENT_DIRTY) {
+							// do nothing, transient
+						}
+						else {
+							pm.deletePersistent(w);
+						}
+						
 						return null;
 					}
 				});

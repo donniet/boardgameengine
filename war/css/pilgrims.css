@@ -315,5 +315,10 @@ ul.resource-view>li:hover, ul.resource-view>li.resource-view-resource-selected {
 	clear:both;
 }
 
+.current-player {
+	margin: -1px;
+	border: solid 1px green;
+}
+
 
 /* end board/player-view */

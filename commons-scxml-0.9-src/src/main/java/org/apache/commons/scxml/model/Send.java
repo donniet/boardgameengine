@@ -52,7 +52,17 @@ public class Send extends Action implements ExternalContent {
      * The default targettype.
      */
     private static final String TARGETTYPE_SCXML = "scxml";
+    
+    /**
+     * The default targettype URI.
+     */
+    private static final String TARGETTYPE_SCXML_URI = "http://www.w3.org/TR/scxml/#SCXMLEventProcessor";
 
+    /**
+     * The default target for internally handled events
+     */
+    private static final String TARGET_SCXML_INTERNAL = "#_internal";
+    
     /**
      * The spec mandated derived event when target cannot be reached
      * for TARGETTYPE_SCXML.
@@ -366,9 +376,11 @@ public class Send extends Action implements ExternalContent {
             }
         }
         // Lets see if we should handle it ourselves
-        if (targettypeValue != null
-              && targettypeValue.trim().equalsIgnoreCase(TARGETTYPE_SCXML)) {
-            if (SCXMLHelper.isStringEmpty(targetValue)) {
+        if (targettypeValue != null && (
+        		targettypeValue.trim().equalsIgnoreCase(TARGETTYPE_SCXML) ||
+        		targettypeValue.trim().equalsIgnoreCase(TARGETTYPE_SCXML_URI))) {
+            if (SCXMLHelper.isStringEmpty(targetValue) || 
+            		targetValue.trim().equalsIgnoreCase(TARGET_SCXML_INTERNAL)) {
                 // TODO: Remove both short-circuit passes in v1.0
                 if (wait == 0L) {
                     if (appLog.isDebugEnabled()) {

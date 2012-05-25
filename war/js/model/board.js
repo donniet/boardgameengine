@@ -159,7 +159,8 @@ function Board(token, boardUrl, actionUrl, detailsUrl) {
 		"board.placeVertexDevelopment": this.handlePlaceVertexDevelopment,
 		"board.placeEdgeDevelopment": this.handlePlaceEdgeDevelopment,
 		"board.diceRolled": this.handleDiceRoll,
-		"board.resourcesDistributed": this.handleResourcesDistributed
+		"board.resourcesDistributed": this.handleResourcesDistributed,
+		"board.currentPlayerChanged": this.handleCurrentPlayerChange
 	};
 	
 	this.player_ = new Array();
@@ -214,18 +215,25 @@ Board.prototype.handleSocketMessage = function(msg) {
 	}
 }
 
+Board.prototype.handleCurrentPlayerChange = function(event) {
+	console.log("currentPlayerChange: " + event.params_.currentPlayer);
+	
+	this.currentPlayer_ = parseInt(event.params_.currentPlayer);
+	
+	Event.fire(this, "currentPlayerChange", [this.currentPlayer_]);
+}
 Board.prototype.handleDiceRoll = function(event) {
 	this.dice_ = new Array();
 	
-	if(event.params_.diceValues != null)
-	
-	var values = event.params_.diceValues.split(" ");
-	for(var i = 0; i < values.length; i++) {
-		if(values[i] != "")
-			this.dice_.push(parseInt(values[i]));
+	if(event.params_.diceValues != null) {
+		var values = event.params_.diceValues.split(" ");
+		for(var i = 0; i < values.length; i++) {
+			if(values[i] != "")
+				this.dice_.push(parseInt(values[i]));
+		}
+		console.log("handleDiceRoll: " + (this.dice_[0] + this.dice_[1]));
+		Event.fire(this, "diceRolled", [this.dice_]);
 	}
-	console.log("handleDiceRoll: " + (this.dice_[0] + this.dice_[1]));
-	Event.fire(this, "diceRolled", [this.dice_]);
 }
 
 Board.prototype.handleResourcesDistributed = function(event) {

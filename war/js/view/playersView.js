@@ -21,6 +21,20 @@ PlayersView.prototype.setBoard = function(board) {
 	Event.addListener(board, "resourcesUpdated", function(players) {
 		self.render();
 	});
+	Event.addListener(board, "currentPlayerChange", function(currentPlayerIndex) {
+		self.setCurrentPlayer(currentPlayerIndex);
+	});
+};
+PlayersView.prototype.setCurrentPlayer = function(currentPlayerIndex) {
+	for(var i = 0; i < this.board_.player_.length; i++) {
+		var p = this.board_.player_[i];
+		if(i == currentPlayerIndex) { 
+			p.__el.addClass("current-player");
+		}
+		else {
+			p.__el.removeClass("current-player");
+		}
+	}
 };
 PlayersView.prototype.render = function() {
 	var self = this;
@@ -42,7 +56,6 @@ PlayersView.prototype.render = function() {
 		img.attr("src", "http://www.gravatar.com/avatar/" + p.hashedEmail_ + "?s=50");
 		li.append(img);
 		
-		ul.append(li);
 		
 		var resel = $("<div class='resources' />");
 		
@@ -57,6 +70,11 @@ PlayersView.prototype.render = function() {
 				Event.fire(self, "resourceclick", [player, resource]);
 			};
 		}(p));
+		
+		ul.append(li);
+		p.__el = li;
 	}
 	this.el_.append(ul);
+	
+	this.setCurrentPlayer(this.board_.currentPlayer_);
 };

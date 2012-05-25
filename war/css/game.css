@@ -374,6 +374,11 @@ div.size-bar-attach-bottom {
 
 /* PLAYER */
 
+.current-player {
+	margin: -1;
+	border: solid 1px green;
+}
+
 .player-red {
     fill:rgb(255,0,0);
     background-color:rgb(255,0,0);
