@@ -621,6 +621,13 @@
 					<script>//<![CDATA[
 						state.board.currentPlayer = (state.board.currentPlayer.text() >>> 0) + 1;
 					//]]></script>
+					<send 	event="'board.currentPlayerChanged'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.currentPlayerChanged.send'">
+						
+						<param name="currentPlayer" expr="state.board.currentPlayer.text()" />
+					</send>
 				</transition>
 				<transition cond="state.board.firstPlacement == 'true' &amp;&amp; (state.board.currentPlayer.text() >>> 0) + 1 >= state.board.players.player.length()" target="placement.buildSettlement">
 					<script>//<![CDATA[
@@ -631,12 +638,26 @@
 					<script>//<![CDATA[
 						state.board.currentPlayer = (state.board.currentPlayer.text() >>> 0) - 1;
 					//]]></script>
+					<send 	event="'board.currentPlayerChanged'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.currentPlayerChanged.send'">
+						
+						<param name="currentPlayer" expr="state.board.currentPlayer.text()" />
+					</send>
 				</transition>
 				<transition cond="state.board.firstPlacement != 'true' &amp;&amp; state.board.currentPlayer &lt;= 0" target="main">
 					<script>//<![CDATA[
 						state.board.currentPlayer = 1;
 						delete state.board.firstPlacement;
 					//]]></script>
+					<send 	event="'board.currentPlayerChanged'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.currentPlayerChanged.send'">
+						
+						<param name="currentPlayer" expr="state.board.currentPlayer.text()" />
+					</send>
 				</transition>
 			</state>
 		</state>
