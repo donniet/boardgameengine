@@ -43,6 +43,7 @@ import org.boardgameengine.scxml.js.JsContext;
 import org.boardgameengine.scxml.js.JsEvaluator;
 import org.boardgameengine.scxml.js.JsFunctionJsonTransformer;
 import org.boardgameengine.scxml.model.Error;
+import org.boardgameengine.scxml.model.FlagStateAsImportant;
 import org.boardgameengine.scxml.semantics.SCXMLGameSemanticsImpl;
 import org.mozilla.javascript.Function;
 import org.mozilla.javascript.Scriptable;
@@ -51,8 +52,11 @@ import org.mozilla.javascript.xml.XMLLib;
 import org.mozilla.javascript.xmlimpl.XMLLibImpl;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
+import org.xml.sax.Attributes;
+import org.xml.sax.ContentHandler;
 import org.xml.sax.ErrorHandler;
 import org.xml.sax.InputSource;
+import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 
@@ -98,6 +102,9 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	
 	@Persistent
 	private Key owner;
+	
+	@Persistent
+	private Date created;
 		
 	@Persistent
 	private Key gameTypeKey;
@@ -126,6 +133,9 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	
 	@NotPersistent
 	transient private boolean isError_ = false;
+	
+	@NotPersistent
+	transient private boolean isImportant_ = false;
 	
 	@NotPersistent
 	transient private String errorMessage_ = "";
@@ -161,6 +171,7 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		this();
 		
 		setGameType(gt);
+		setCreated(new Date());
 		init();
 	}
 	
@@ -172,9 +183,9 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		loadWarnings = new ArrayList<Exception>();
 		
 		List<CustomAction> customActions = new ArrayList<CustomAction>();
-		CustomAction ca = new CustomAction("http://www.pilgrimsofnatac.com/schemas/game.xsd", "error", Error.class);
-		customActions.add(ca);
-		
+		customActions.add(new CustomAction("http://www.pilgrimsofnatac.com/schemas/game.xsd", "error", Error.class));
+		customActions.add(new CustomAction("http://www.pilgrimsofnatac.com/schemas/game.xsd", "flagStateAsImportant", FlagStateAsImportant.class));
+				
 		scxml = null;
 		try {
 			scxml = SCXMLParser.parse(new InputSource(bis), new ErrorHandler() {
@@ -236,7 +247,7 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 			else {
 				exec.go();
 				
-				persistGameState();
+				persistGameState(true);
 			}
 		}
 		catch(ModelException e) {
@@ -247,8 +258,9 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	}
 	
 
-	public GameState persistGameState() {
-		// record initial state
+	public GameState persistGameState(boolean isImportant) {
+		GameState.deleteOldStatesForGame(this);
+		
 		GameState gs = new GameState(this);
 		
 		Set<State> s = exec.getCurrentStatus().getStates();
@@ -257,11 +269,13 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		}
 		gs.setStateDate(new Date());
 		gs.extractFrom(scxml.getDatamodel(), cxt);
+		gs.setImportant(isImportant_ || isImportant);
 		states.add(gs);
 		
 		makePersistent();
 		isDirty_ = false;
 		isError_ = false;
+		isImportant_ = false;
 		
 		return gs;
 	}
@@ -302,6 +316,9 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 				errorMessage_ = params.get("message").toString();
 				log.error("[error]: " + params.get("message"));
 				isError_ = true;
+			}
+			else if(event.equals("game.flagStateAsImportant")) {
+				isImportant_ = Boolean.parseBoolean(params.get("important").toString());
 			}
 			else {
 				success = true;
@@ -353,6 +370,7 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		}
 		
 		if(content != null) {
+			
 			Node contentNode = doc.createElement("content");
 			Node contentBody = null;
 			try {
@@ -531,14 +549,19 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	public Date getCurrentTime() {
 		return new Date();
 	}
-	public void addGameState(Date stateDate, Status currentStatus, Datamodel datamodel, JsContext cxt) {
+	/*
+	public void addGameState(Date stateDate, Status currentStatus, Datamodel datamodel, JsContext cxt, boolean important) {
+		
+		
 		GameState s = new GameState(this);
 		s.setStateDate(stateDate);
 		s.getStateSet().clear();
 		s.getStateSet().addAll(currentStatus.getStates());
 		s.extractFrom(datamodel, cxt);
+		s.setImportant(important);
 		states.add(s);
 	}
+	*/
 	public void addEvent(Date eventDate) {
 		GameHistoryEvent e = new GameHistoryEvent(this);
 		e.setEventDate(eventDate);
@@ -587,7 +610,7 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		}
 		
 		if(isDirty_ && !isError_) {
-			persistGameState();
+			persistGameState(true);
 			isDirty_ = false;
 			isError_ = false;
 			return true;
@@ -627,7 +650,7 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		}
 		
 		if(isDirty_ && !isError_) {
-			persistGameState();
+			persistGameState(true);
 		}
 		else {
 			isDirty_ = false;
@@ -650,7 +673,7 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		}
 		
 		if(isDirty_ && !isError_) {
-			persistGameState();
+			persistGameState(false);
 		}
 		else if(isError_) {
 			ret = false;
@@ -752,7 +775,7 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 			e.printStackTrace();
 		}
 	}
-	
+		
 	public void serialize(Writer out) {
 		JSONSerializer json = new JSONSerializer();
 		
@@ -819,6 +842,14 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 
 	public Key getKey() {
 		return key;
+	}
+
+	public Date getCreated() {
+		return created;
+	}
+
+	public void setCreated(Date created) {
+		this.created = created;
 	}
 
 

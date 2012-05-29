@@ -69,12 +69,25 @@ function handleLoad() {
 	});
 	Event.addListener(playersView, "playerclick", function(p) {
 		console.log("player click: " + p.color_);
-		var responder = board.sendAction("playerClick", [p.playerId_, p.color_]);
+		var responder = board.sendAction("playerClick", {
+			"selectedColor": p.color_
+		});
 		Event.addListener(responder, "error", handleActionError);
 	});
 	Event.addListener(playersView, "resourceclick", function(p, r) {
 		console.log("resource click: " + p.color_ + " --> " + r);
-		var responder = board.sendAction("resourceClick", [p.playerId_, p.color_, r]);
+		var responder = board.sendAction("resourceClick", {
+			"color": p.color_,
+			"resource": r
+		});
+		Event.addListener(responder, "error", handleActionError);
+	});
+	Event.addListener(playersView, "traderesourceclick", function(p, r) {
+		console.log("trade resource click: " + p.color_ + " --> " + r);
+		var responder = board.sendAction("tradeResourceClick", {
+			"color": p.color_,
+			"resource": r
+		});
 		Event.addListener(responder, "error", handleActionError);
 	});
 	Event.addListener(board, "diceRolled", function(dice) {
@@ -83,10 +96,22 @@ function handleLoad() {
 		var responder = board.sendAction("endTurn");
 		Event.addListener(responder, "error", handleActionError);		
 	});
+	$('#startTradeButton').click(function() {
+		var responder = board.sendAction("startTrade");
+		Event.addListener(responder, "error", handleActionError);		
+	});
+	$('#endTradeButton').click(function() {
+		var responder = board.sendAction("endTrade");
+		Event.addListener(responder, "error", handleActionError);		
+	});
 	
-	layout.addItem(document.getElementById("header"), "top", 125);
-	layout.addItem(document.getElementById("players"), "right", 200);
-	layout.addItem(document.getElementById("game-board"), "center");
+	layout.addItem($("#header"), "top", 125);
+	layout.addItem($("#players-area"), "right", 450, true);
+	layout.addItem($("#game-board"), "center");
+	
+	Event.addListener($("#players-area").get(), "layoutResize", function(width, height) {
+		playersView.handleResize(width, height);
+	});
 
 
 	board.load();
@@ -115,11 +140,13 @@ $(handleLoad);
 </form>
 
 <input type="submit" value="END TURN" id="endTurnButton" />
+<input type="submit" value="START TRADE" id="startTradeButton" />
+<input type="submit" value="END TRADE" id="endTradeButton" />
 
 </div>
 <div id="game-board"></div>
 
-<div id="players"></div>
+<div id="players-area"><div id="players"></div></div>
 
 
 

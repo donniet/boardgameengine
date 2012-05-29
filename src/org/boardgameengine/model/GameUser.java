@@ -115,6 +115,9 @@ public class GameUser extends ScriptableObject {
 	public String getHashedUserId() {
 		return KeyFactory.keyToString(key);
 	}
+	public String getNickname() {
+		return user.getNickname();
+	}
 		
 	// scriptableobject stuff...
 	public String jsGet_hashedUserId() {

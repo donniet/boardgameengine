@@ -347,8 +347,6 @@ BoardView.prototype.renderVertexDevelopment = function (vertex, vertexDevelopmen
         if (svgEl.firstChild) svgEl.insertBefore(n, svgEl.firstChild);
         else svgEl.appendChild(n);
     }
-
-    console.log("development: " +  vertexDevelopment.color_ + ": " + vertexDevelopment.type_)
     
     var model = null;
     if (model = this.modelElements_[vertexDevelopment.type_]) {

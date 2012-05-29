@@ -21,6 +21,10 @@ public class GameHistoryEvent {
 	@Persistent
 	private Date eventDate = new Date();
 	
+	@Persistent
+	private String event = null;
+	
+	
 	protected GameHistoryEvent(Game game) {
 		this.game = game;
 	}

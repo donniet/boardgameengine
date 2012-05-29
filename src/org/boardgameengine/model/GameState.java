@@ -35,6 +35,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.scxml.model.Data;
 import org.apache.commons.scxml.model.Datamodel;
+import org.boardgameengine.config.Config;
 import org.boardgameengine.persist.PMF;
 import org.boardgameengine.persist.PersistenceCommand;
 import org.boardgameengine.persist.PersistenceCommandException;
@@ -57,6 +58,9 @@ public class GameState {
 	
 	@Persistent
 	private Date stateDate = new Date();
+	
+	@Persistent
+	private boolean important = false;
 	
 	@Persistent(defaultFetchGroup = "true")
 	@Element(dependent = "true", mappedBy = "gameState", extensions = @Extension(vendorName="datanucleus", key="cascade-persist", value="true"))
@@ -93,6 +97,37 @@ public class GameState {
 	public Set<String> getStateSet() {
 		return stateSet;
 	}
+	
+	public static void deleteOldStatesForGame(final Game game) {
+		try {
+			PMF.executeCommandInTransaction(new PersistenceCommand() {
+				@Override
+				public Object exec(PersistenceManager pm) {
+					Query q = pm.newQuery(GameState.class, "game == gameIn && important == false");
+					q.declareParameters(Game.class.getName() + " gameIn");
+					q.setResult("count(key)");
+					
+					int results = (Integer)q.execute(game);
+					
+					int stateHistorySize = Config.getInstance().getStateHistorySize();
+										
+					if(results > 2 * stateHistorySize) {
+						q = pm.newQuery(GameState.class, "game == gameIn && important == false");
+						q.setOrdering("stateDate asc");
+						q.declareParameters(Game.class.getName() + " gameIn");
+						q.setRange(0, results - stateHistorySize);
+						q.deletePersistentAll(game);
+					}
+					
+					return null;
+				}
+			});
+		}
+		catch(PersistenceCommandException e) {
+			e.printStackTrace();
+		}
+	}
+	
 	/*
 	 * inject the datamodel into the context
 	 * 
@@ -211,5 +246,11 @@ public class GameState {
 		if(results != null) {
 			setDatamodel(results);
 		}
+	}
+	public boolean isImportant() {
+		return important;
+	}
+	public void setImportant(boolean important) {
+		this.important = important;
 	}
 }

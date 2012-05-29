@@ -247,6 +247,10 @@ body {
 
 /* board/resource-view */
 
+.resources, .trade-resources {
+	clear:both;
+}
+
 ul.resource-view, ul.resource-view ul, ul.resource-view li {
 	list-style-type: none;
 }
@@ -309,10 +313,95 @@ ul.resource-view>li:hover, ul.resource-view>li.resource-view-resource-selected {
 
 /* end board/resource-view */
 
+/* size-bar */
+
+div.size-bar {
+	/*background-color: rgba(0,0,0,0.5); */
+	padding:0;
+	margin:0;
+	overflow:inherit;
+}
+div.size-bar-attach-left {
+	cursor: w-resize;
+	border-right: solid 1px black;
+}
+div.size-bar-attach-right {
+	cursor: e-resize;
+	border-left: solid 1px black;
+}
+div.size-bar-attach-top {
+	cursor: s-resize;
+	border-bottom: solid 1px black; 
+}
+div.size-bar-attach-bottom {
+	cursor: n-resize;
+	border-top: solid 1px black;
+}
+/* end size-bar */
+
 /* board/player-view */
+
+#players .player-image {
+	position:absolute;
+	top: 0px;
+	left: 0px;
+}
+#players .player-name {
+	display: block;
+	margin: 0;
+	padding: 3px;
+	width: 69px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	position:absolute;
+	top: 75px;
+	left: 0;
+}
+
+#players .resources {
+	position: absolute;
+	left: 80px;
+	right: 200px;
+}
+#players .trade-resources {
+	position: absolute;
+	right: 25px;
+	width: 175px;
+}
+
+#players .resources ul.resource-view {
+	
+}
 
 #players > ul > li {
 	clear:both;
+	height: 100px;
+	margin: -1px;
+	position:absolute;
+	width: 100%;
+}
+#players .player-0 {
+	top: 0;
+}
+#players .player-1 {
+	top: 100px;
+}
+#players .player-2 {
+	top: 200px;
+}
+#players .player-3 {
+	top: 300px;
+}
+#players > ul {
+	margin: 0;
+	padding: 0;
+}
+#players > ul > li {
+	margin: 0;
+	padding: 0;
+}
+#players ul, #players li {
+	list-style-type: none;
 }
 
 .current-player {

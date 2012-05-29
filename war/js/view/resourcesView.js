@@ -15,7 +15,13 @@ ResourcesView.prototype.setPlayer = function(player) {
 	this.player_ = player;
 	
 	var self = this;
-	Event.addListener(this.player_, "load", function() { self.renderPlayer(); });
+	Event.addListener(this.player_, "load", function(resources) { self.renderPlayer(); });
+}
+ResourcesView.prototype.setTradePlayer = function(tradePlayer) {
+	this.player_ = tradePlayer;
+	var self = this;
+	
+	Event.addListener(this.player_, "load", function(resources) { self.renderPlayer(); });	
 }
 ResourcesView.prototype.setResourceArray = function(resourceArray) {
 	this.resources_ = resourceArray;
@@ -98,10 +104,8 @@ ResourcesView.prototype.render = function(resources) {
 	
 	var ul = $("<ul/>");
 	ul.addClass("resource-view");
-	console.log("rendering resources: " + this.resources_.length);
 	for(var i = 0; i < this.resources_.length; i++) {
 		var r = this.resources_[i];
-		console.log("current resource: " + r.type_ + "x" + r.count_);
 		for(var j = 0; j < r.count_; j++) {
 			var li = $("<li/>");
 			var resource = $("<span/>");

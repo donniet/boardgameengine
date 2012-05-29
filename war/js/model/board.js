@@ -160,10 +160,15 @@ function Board(token, boardUrl, actionUrl, detailsUrl) {
 		"board.placeEdgeDevelopment": this.handlePlaceEdgeDevelopment,
 		"board.diceRolled": this.handleDiceRoll,
 		"board.resourcesDistributed": this.handleResourcesDistributed,
-		"board.currentPlayerChanged": this.handleCurrentPlayerChange
+		"board.currentPlayerChanged": this.handleCurrentPlayerChange,
+		"board.tradeStarted": this.handleStartTrade,
+		"board.tradeEnded": this.handleEndTrade,
+		"board.tradeUpdated": this.handleTradeUpdated,
+		"board.tradeConfirmed": this.handleTradeConfirmed,
 	};
 	
 	this.player_ = new Array();
+	this.tradePlayer_ = new Array();
 	
 	this.currentPlayer_ = null;
 	this.currentVertex_ = null;
@@ -213,6 +218,21 @@ Board.prototype.handleSocketMessage = function(msg) {
 	if(typeof handler == "function") {
 		handler.apply(this, [event]);
 	}
+}
+
+Board.prototype.handleTradeUpdated = function(event) {
+	console.log("handleTradeUpdated..." + event.content_)
+	this.extractTradePlayerFromEvent(event);
+}
+Board.prototype.handleStartTrade = function(event) {
+	this.extractTradePlayerFromEvent(event);
+}
+Board.prototype.handleEndTrade = function(event) {
+	this.tradePlayer_ = new Array();
+	this.handleResourcesDistributed(event);
+}
+Board.prototype.handleTradeConfirmed = function(event) {
+	this.handleResourcesDistributed(event);
 }
 
 Board.prototype.handleCurrentPlayerChange = function(event) {
@@ -280,18 +300,7 @@ Board.prototype.handlePlaceVertexDevelopment = function(event) {
 
 	vertex.development_.push(d);
 	
-	if(event.content != null) {
-		//content may include player XML
-		forChildNodes(event.content, {
-			"player": function(xml) {
-				var p = new Player();
-				p.loadXML(xml);
-				
-				this.replacePlayer(p);
-			}
-		}, this);
-		Event.fire(this, "resourcesUpdated", [this.player_]);
-	}
+	this.extractPlayerFromEvent(event);
 	
 	Event.fire(this, "placeVertexDevelopment", [vertex, d]);
 }
@@ -318,10 +327,19 @@ Board.prototype.handlePlaceEdgeDevelopment = function(event) {
 	
 	edge.development_.push(d);
 	
-	if(event.content != null) {
+	this.extractPlayerFromEvent(event);
+	
+	Event.fire(this, "placeEdgeDevelopment", [edge, d]);
+}
+
+Board.prototype.extractPlayerFromEvent = function(event) {
+	if(event.content_ != null) {
+		var strxml = (new XMLSerializer()).serializeToString(event.content_);
+		console.log("content was included: " + strxml);
 		//content may include player XML
-		forChildNodes(event.content, {
+		forChildNodes(event.content_, {
 			"player": function(xml) {
+				console.log("vert found player node in content: " + xml);
 				var p = new Player();
 				p.loadXML(xml);
 				
@@ -330,8 +348,17 @@ Board.prototype.handlePlaceEdgeDevelopment = function(event) {
 		}, this);
 		Event.fire(this, "resourcesUpdated", [this.player_]);
 	}
-	
-	Event.fire(this, "placeEdgeDevelopment", [edge, d]);
+}
+
+Board.prototype.extractTradePlayerFromEvent = function(event) {
+	console.log("extracting content from trade event");
+	if(event.content_ != null) {		
+		forChildNodes(event.content_, {
+			"trade": this.loadTrade,
+		}, this);
+		console.log("extracting content from trade event");
+		Event.fire(this, "tradeResourcesUpdated", [this.tradePlayer_]);
+	}
 }
 
 Board.prototype.getDice = function() { return this.dice_; };
@@ -438,19 +465,15 @@ Board.prototype.loadDetails = function() {
 
 Board.prototype.handleLoadDetails = function(details) {
 	console.log("handling details...");
+	this.gameDetails_ = details;
 	
-	for(var i = 0; i < this.player_.length; i++) {
-		var p = this.player_[i];
-		console.log(p.color_);
-		for(var j = 0; j < details.players.length; j++) {
-			var dp = details.players[j];
-			
-			if(p.color_ == dp.role) {
-				p.hashedEmail_ = dp.gameUser.hashedEmail;
-				console.log(p.color_ + ": " + p.hashedEmail_);
-			}
-		}
-	}
+	this.gameDetails_.playerMap = new Object();
+	
+	for(var i = 0; i < this.gameDetails_.players.length; i++) {
+		var p = this.gameDetails_.players[i];
+		
+		this.gameDetails_.playerMap[p.role] = p;
+	}	
 }
 
 Board.prototype.loadXML = function(xml) {
@@ -470,9 +493,25 @@ Board.prototype.loadXML = function(xml) {
 				y: parseInt(n.getAttribute("y"))
 			};
 		},
-		"dice": this.loadDice
+		"dice": this.loadDice,
+		"trade": this.loadTrade
 	}, this);
 }
+
+Board.prototype.loadTrade = function(xml) {
+	console.log("loading trade");
+	this.tradePlayer_ = new Array();
+	
+	forChildNodes(xml, {
+		"bank": this.loadTradePlayer,
+		"player": this.loadTradePlayer
+	}, this);
+};
+Board.prototype.loadTradePlayer = function(xml) {
+	var tp = new TradePlayer();
+	tp.loadXML(xml);
+	this.tradePlayer_.push(tp);
+};
 
 Board.prototype.loadPlayers = function(xml) {
 	this.player_ = new Array();
@@ -581,6 +620,38 @@ Player.prototype.loadResources = function(xml) {
 			this.resources_.push(pr);
 		}
 	}, this);
+}
+
+function TradePlayer() {
+	this.resources_ = new Array();
+	this.color_ = null;
+	this.isBank_ = false;
+}
+TradePlayer.prototype.loadXML = function(xml) {
+	if(xml.localName == "bank") {
+		this.isBank_ = true;
+		this.color_ = null;
+	}
+	else {
+		this.isBank_ = false;
+		this.color_ = xml.getAttribute("color");
+	}	
+	
+	forChildNodes(xml, {
+		"resources": this.loadResources
+	}, this);
+};
+TradePlayer.prototype.loadResources = function(xml) {
+	forChildNodes(xml, {
+		"resource": function(n) {
+			var pr = new PlayerResource();
+			pr.loadXML(n);
+			this.resources_.push(pr);
+		}
+	}, this);
+}
+TradePlayer.prototype.getResources = function() {
+	return this.resources_;
 }
 
 function PlayerResource() {}

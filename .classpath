@@ -14,6 +14,6 @@
 	<classpathentry kind="lib" path="war/WEB-INF/lib/flexjson-2.1.jar" sourcepath="flexjson-2.1/flexjson-2.1-sources.jar"/>
 	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-codec-1.6.jar" sourcepath="/home/donniet/commons-codec-1.6/commons-codec-1.6-sources.jar"/>
 	<classpathentry kind="lib" path="war/WEB-INF/lib/serializer.jar"/>
-	<classpathentry kind="con" path="com.google.appengine.eclipse.core.GAE_CONTAINER/App Engine"/>
+	<classpathentry kind="con" path="com.google.appengine.eclipse.core.GAE_CONTAINER/App Engine (4)"/>
 	<classpathentry kind="output" path="war/WEB-INF/classes"/>
 </classpath>

@@ -47,6 +47,7 @@ public class Config {
 	private int maxScriptRuntime_ = 1;
 	private String datamodeltransformresource_ = "";
 	private String datamodeltransformplayeridparam_ = "";
+	private int stateHistorySize_ = 100;
 	
 	public static Config getInstance() {
 		if(instance_ == null) {
@@ -78,6 +79,8 @@ public class Config {
 			
 			datamodeltransformresource_ = props_.getProperty("datamodeltransformresource");
 			datamodeltransformplayeridparam_ = props_.getProperty("datamodeltransformplayeridparam");
+			
+			stateHistorySize_ = Integer.parseInt(props_.getProperty("stateHistorySize"));
 			
 			random_ = new SecureRandom();
 			//dateFormat_.setCalendar(new GregorianCalendar());
@@ -127,6 +130,9 @@ public class Config {
 	}
 	public String getSCXMLNamespace() { 
 		return scxmlNamespace_;
+	}
+	public int getStateHistorySize() {
+		return stateHistorySize_;
 	}
 	private static String hex(byte[] array) {
 		StringBuffer sb = new StringBuffer();

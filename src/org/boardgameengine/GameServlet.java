@@ -173,7 +173,8 @@ public class GameServlet extends HttpServlet {
 					resp.getWriter().println("Could not load game type: " + req.getParameter("type"));
 					return;
 				}
-								
+				
+				h.setCreated(new Date());
 				h.setOwner(userService.getCurrentUser());				
 				h.addWatcher(userService.getCurrentUser());
 				
@@ -182,7 +183,120 @@ public class GameServlet extends HttpServlet {
 				resp.sendRedirect(String.format("/game/%s/", KeyFactory.keyToString(h.getKey())));
 			}
 		});
+		
+		addGetHandler("^/game/([^/]+)/datamodel", new GameServiceRequestHandler() {
+			@Override
+			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
+				String gameid = matches.group(1);
 				
+				String playerid = "";
+				
+				UserService userService = UserServiceFactory.getUserService();
+				if(userService.getCurrentUser() != null) {
+					GameUser gu = GameUser.findOrCreateGameUserByUser(userService.getCurrentUser());
+					playerid = gu.getHashedUserId();
+				}
+				
+				Game h = null;
+				try {
+					h = Game.findGameByKey(KeyFactory.stringToKey(gameid));
+				} catch (GameLoadException e1) {
+					resp.setStatus(500);
+					if(isDebug()) {
+						resp.setContentType("text/plain");
+						e1.printStackTrace(resp.getWriter());
+					}
+				}
+				
+				if(h == null) {
+					resp.setStatus(404);
+					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
+						resp.getWriter().println("This game does not exist: " + matches.group(1));
+					return;
+				}
+				
+				GameState gs = h.getMostRecentState();
+				
+				if(gs == null) {
+					resp.setStatus(404);
+					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
+						resp.getWriter().println("This game has no active states: " + matches.group(1));
+					return;
+				}
+				
+				log.info(String.format("state date: %s", gs.getStateDate()));
+
+				List<GameStateData> datamodel = gs.getDatamodel();
+				
+				TransformerFactory factory = TransformerFactory.newInstance();
+				Transformer trans = null;	
+				
+				DocumentBuilderFactory docfactory = DocumentBuilderFactory.newInstance();
+				DocumentBuilder builder;
+				try {
+					builder = docfactory.newDocumentBuilder();
+				} catch (ParserConfigurationException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+					resp.setStatus(500);
+					return;
+				}
+				
+				Document doc = builder.newDocument();
+				
+				Node datamodelNode = doc.createElementNS(Config.getInstance().getSCXMLNamespace(), "datamodel");
+
+				doc.appendChild(datamodelNode);
+				
+				for(Iterator<GameStateData> i = datamodel.iterator(); i.hasNext();) {
+					GameStateData gsd = i.next();
+					
+					try {
+						trans = factory.newTransformer();
+						trans.transform(new StreamSource(new ByteArrayInputStream(gsd.getValue())), new DOMResult(datamodelNode));
+					} catch (TransformerConfigurationException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+						resp.setStatus(500);
+						return;
+					} catch (TransformerException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+						resp.setStatus(500);
+						return;
+					}					
+				}		
+												
+				try {
+					trans = factory.newTransformer(new StreamSource(Config.getInstance().getDataModelTransformStream()));
+				} catch (TransformerConfigurationException e) {
+					trans = null;
+					resp.setStatus(404);
+					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
+						e.printStackTrace(resp.getWriter());
+					return;
+				}
+				
+				if(trans == null) {
+					resp.setStatus(500);
+					//resp.getWriter().write("Could not load datamodel transform");
+					return;
+				}
+				
+				trans.setParameter(Config.getInstance().getDataModelTransformPlayerIdParam(), playerid);				
+												
+				try {
+					trans.transform(new DOMSource(doc), new StreamResult(resp.getOutputStream()));
+					resp.setContentType("application/xml");
+				} catch (TransformerException e) {
+					resp.setStatus(404);
+					if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
+						e.printStackTrace(resp.getWriter());
+					return;
+				}
+			}
+		});
+		
 		addGetHandler("^/game/([^/]+)/datamodel/([^/]+)", new GameServiceRequestHandler() {
 			@Override
 			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
@@ -327,7 +441,7 @@ public class GameServlet extends HttpServlet {
 				
 				req.setAttribute("gameid", gameid);
 				req.setAttribute("boarddatamember", "state");
-				req.setAttribute("boarddatamemberurl", String.format("datamodel/state", gameid));
+				req.setAttribute("boarddatamemberurl", String.format("datamodel", gameid));
 				req.setAttribute("joingameurl", String.format("join", gameid));
 				req.setAttribute("boardactionurl", String.format("event/", gameid));
 				req.setAttribute("startgameurl", String.format("start", gameid));

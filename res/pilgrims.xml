@@ -32,9 +32,7 @@
 				var ret = true;
 				for(var i = 0; ret && i < cost.length; i++) {
 					var c = cost[i];
-					
-					log.info("cost el: " + c);
-					
+										
 					var resource = player.resources.resource.(@type == c.resource)[0];
 					if(!resource) {
 						ret = false;
@@ -42,10 +40,6 @@
 					else {
 						var count = parseInt(resource.@count);
 						
-						
-						log.info("player am: " + count);
-						log.info("cost am: " + c.amount);
-					
 						ret = ret && (count >= c.amount);
 					}
 				}
@@ -65,16 +59,16 @@
 					if(!resource) {
 						throw "Resource not found: " + c.resource;
 					}
-					else {
-						log.info("player am: " + resource.@count.toString());
-						log.info("cost am: " + c.amount);
-					
+					else {					
 						resource.@count = parseInt(resource.@count) - c.amount;
 					}
 				}
 			},
 			isCurrentPlayer: function(board, playerId) {
 				return playerId == board.players.player[board.currentPlayer].playerId.text()
+			},
+			getCurrentPlayer: function(board) {
+				return board.players.player[board.currentPlayer];
 			},
 			concatenateNodeValues: function(nodeList, child, delim) {
 				if(typeof delim != "string") delim = " ";
@@ -126,8 +120,7 @@
 					<point x={0 + x} y={1 + y} />
 					</>;
 			},
-			instantiateTemplate: function(board, template) {	
-				board.appendChild(template.developments);
+			instantiateTemplate: function(board, template) {
 							
 				for(var i = 0; i < template.polys.poly.length(); i++) {
 					var p = template.polys.poly[i];
@@ -231,13 +224,23 @@
 				}
 				return false;
 			},
-			hasAdecentVertexDevelopmentOfColor: function(board, edge, color) {
-				var v1 = util.findVertex(board, edge.@x1, edge.@y1);
-				var v2 = util.findVertex(board, edge.@x2, edge.@y2);
+			hasAdecentVertexOrEdgeDevelopmentOfColor: function(board, edge, color) {
+				var adjecentVertDev = board.verteces.vertex.(
+					(@x == edge.@x1 && @y == edge.@y1) ||
+					(@x == edge.@x2 && @y == edge.@y2)).development.(@color == color).length() > 0; 
 				
-				return 
-					(!v1 || v1.development.length() == 0 || v1.development[0].@color != color) &&
-					(!v2 || v2.development.length() == 0 || v2.development[0].@color != color);
+				var adjecentEdgeDev = board.edges.edge.( 
+					(@x1 == edge.@x1 && @y1 == edge.@y1) ||
+					(@x2 == edge.@x1 && @y2 == edge.@y1) ||
+					(@x1 == edge.@x2 && @y1 == edge.@y2) ||
+					(@x2 == edge.@x2 && @y2 == edge.@y2) ).development.(@color == color).length() > 0;
+				
+				return adjecentVertDev || adjecentEdgeDev;				
+			},
+			hasAdjecentEdgeDevelopmentOfColor: function(board, vertex, color) {
+				return board.edges.edge.(
+					(@x1 == vertex.@x && @y1 == vertex.@y) ||
+					(@x2 == vertex.@x && @y2 == vertex.@y)).development.(@color == color).length() > 0;
 			},
 			placeVertexDevelopment: function(board, dev, col, x, y) {
 				log.info("placing development: " + dev + "-" + col + " " + x + "," + y);
@@ -287,7 +290,29 @@
 				}
 			},
 			checkVertexDevelopment: function(board, x, y, color, type) {
-			}
+			},
+			processTrade: function(board, offeredTrade, selectedTrade) {
+				
+			
+				var offeringPlayer = board.players.player.(color.text() == offeredTrade.@color);
+				var selectedPlayer = board.players.player.(color.text() == selectedTrade.@color);
+				
+				for each(var resource in offeredTrade.resources.resource) {
+					var ores = offeringPlayer.resources.resource.(@type == resource.@type);
+					var sres = selectedPlayer.resources.resource.(@type == resource.@type);
+					
+					ores.@count = parseInt(ores.@count) - parseInt(resource.@count);
+					sres.@count = parseInt(sres.@count) + parseInt(resource.@count);
+				}
+				
+				for each(var resource in selectedTrade.resources.resource) {
+					var ores = offeringPlayer.resources.resource.(@type == resource.@type);
+					var sres = selectedPlayer.resources.resource.(@type == resource.@type);
+					
+					ores.@count = parseInt(ores.@count) + parseInt(resource.@count);
+					sres.@count = parseInt(sres.@count) - parseInt(resource.@count);
+				}
+			},
 			
 		};
 		//]]></script> -->
@@ -380,6 +405,7 @@
 				state.board.appendChild(<players/>);
 				state.board.appendChild(state.template.resources);	
 				state.board.appendChild(state.template.polytypes);	
+				state.board.appendChild(state.template.developments);	
 				
 			//]]></script>
 		</onentry>
@@ -537,6 +563,7 @@
 							}
 						}
 					//]]></script>
+					<game:flagStateAsImportant important="true" />
 					<send 	event="'board.placeVertexDevelopment'" 
 							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
 							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
@@ -546,6 +573,7 @@
 						<param name="x" expr="_eventdata.vertex.@x >>> 0" />
 						<param name="y" expr="_eventdata.vertex.@y >>> 0" />
 						<param name="type" expr="'settlement'" />
+						<content expr="state.board.players.player[state.board.currentPlayer]" />
 					</send>
 				</transition>
 			</state>
@@ -572,6 +600,7 @@
 						util.placeEdgeDevelopment(state.board, "road", state.board.players.player[state.board.currentPlayer].color.text(), _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2);
 						delete state.board.currentVertex;
 					//]]></script>
+					<game:flagStateAsImportant important="true" />
 					<send 	event="'board.placeEdgeDevelopment'" 
 							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
 							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
@@ -629,6 +658,13 @@
 					
 				//]]></script>
 				
+				<send 	event="'board.diceRolled'" 
+						target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+						targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+						id="'board.diceRolled.send'">
+					
+					<param name="diceValues" expr="var ret = ''; for each(var die in state.board.dice.die) { ret += die.@value + ' '; } ret;" />
+				</send>
 			</transition>
 		</state>
 		<state id="main.checkDiceRoll">
@@ -642,15 +678,7 @@
 						log.info("Discarding...");
 					//]]></script>
 				</onentry>
-				<transition target="main.build">
-					<send 	event="'board.diceRolled'" 
-							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
-							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
-							id="'board.diceRolled.send'">
-						
-						<param name="diceValues" expr="var ret = ''; for each(var die in state.board.dice.die) { ret += die.@value + ' '; } ret;" />
-					</send>
-				</transition>
+				<transition target="main.build" />
 			</state>
 		</state>
 		<state id="main.distributeResources">
@@ -692,19 +720,17 @@
 					<content expr="state.board.players[0]" /> 
 				</send>
 			</onentry>
-			<transition target="main.build">
-				<send 	event="'board.diceRolled'" 
-						target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
-						targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
-						id="'board.diceRolled.send'">
-					
-					<param name="diceValues" expr="var ret = ''; for each(var die in state.board.dice.die) { ret += die.@value + ' '; } ret;" />
-				</send>
-			</transition>
+			<transition target="main.build" />
 		</state>
 		<state id="main.build">
+			<transition event="board.startTrade" target="main.trade">
+			</transition>
+			
 			<transition event="board.vertexClick" cond="!util.isCurrentPlayer(_eventdata.player.text())">
 				<game:error message="You are not the current player." />
+			</transition>
+			<transition event="board.vertexClick" cond="!util.findVertex(state.board, _eventdata.vertex.@x, _eventdata.vertex.@y)">
+				<game:error message="Vertex does not exist" />
 			</transition>
 			<transition event="board.vertexClick" cond="util.getVertexDevelopment(state.board, _eventdata.vertex.@x, _eventdata.vertex.@y) != null">
 				<send 	event="'board.developmentSelected'"
@@ -717,11 +743,51 @@
 					<param name="origin" expr="_eventdata" />
 				</send>
 			</transition>
+			<transition event="board.vertexClick">
+				<send 	event="'board.placeSettlement'"
+						targettype="'http://www.w3.org/TR/scxml/#SCXMLEventProcessor'"
+						target="'#_internal'"
+						id="'board.placeSettlement.send'">
+					<param name="player" expr="state.board.players.player[state.board.currentPlayer]" />
+					<param name="vertex" expr="util.findVertex(state.board, _eventdata.vertex.@x, _eventdata.vertex.@y)" />
+					<param name="cost" expr="state.board.developments.development.(@type == 'settlement').@cost.text()" />
+					<param name="origin" expr="_eventdata" />
+				</send>
+			</transition>
+			
+			<transition event="board.placeSettlement" cond="util.hasAdjecentDevelopment(state.board, _eventdata.vertex.@x, _eventdata.vertex.@y)">
+				<game:error message="There is another settlement or city adjecent to this vertex." />
+			</transition>
+			<transition event="board.placeSettlement" cond="!util.hasAdjecentEdgeDevelopmentOfColor(state.board, _eventdata.vertex, _eventdata.player.color.text())">
+				<game:error message="There is not a road adjecent to this vertex" />
+			</transition>
+			<transition event="board.placeSettlement" cond="!util.checkPlayerResourcesAgainstCost(_eventdata.player, _eventdata.cost)">
+				<game:error message="You do not have enough resources to build a settlement" />
+			</transition>
+			<transition event="board.placeSettlement">
+				<script>//<![CDATA[
+					log.info("placing settlement: " + _eventdata);
+					util.debitPlayerResourcesByCost(_eventdata.player, _eventdata.cost);
+					util.placeVertexDevelopment(state.board, "settlement", _eventdata.player.color.text(), _eventdata.vertex.@x, _eventdata.vertex.@y);
+				//]]></script>
+				<game:flagStateAsImportant important="true" />
+				<send	event="'board.placeVertexDevelopment'"
+						target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+						targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+						id="'board.placeEdgeDevelopment.send'">
+							
+					<param name="color" expr="_eventdata.player.color.text()" />
+					<param name="x" expr="_eventdata.vertex.@x >>> 0" />
+					<param name="y" expr="_eventdata.vertex.@y >>> 0" />
+					<param name="type" expr="'settlement'" />
+					<content expr="_eventdata.player" />
+				</send>
+			</transition>
 			
 			<transition event="board.edgeClick" cond="!util.isCurrentPlayer(_eventdata.player.text())">
 				<game:error message="You are not the current player." />
 			</transition>
-			<transition event="board.edgeClick" cond="!util.findEdge(state.board, _eventdata.edge.@x1.text(), _eventdata.edge.@y1.text(), _eventdata.edge.@x2.text(), _eventdata.edge.@y2.text())">
+			<transition event="board.edgeClick" cond="!util.findEdge(state.board, _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2)">
 				<game:error message="Edge does not exist." />
 			</transition>
 			<transition event="board.edgeClick">
@@ -731,24 +797,26 @@
 						id="'board.placeRoad.send'">
 					<param name="player" expr="state.board.players.player[state.board.currentPlayer]" />
 					<param name="edge" expr="util.findEdge(state.board, _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2)" />
+					<param name="cost" expr="state.board.developments.development.(@type == 'road').@cost.text()" />
 					<param name="origin" expr="_eventdata" />
 				</send>
 			</transition>
-			<transition event="board.placeRoad" cond="log.info('_eventdata: ' + _eventdata) || _eventdata.edge.development.length() > 0">
+			<transition event="board.placeRoad" cond="_eventdata.edge.development.length() > 0">
 				<game:error message="This edge already has a development." />
 			</transition>
-			<transition event="board.placeRoad" cond="!util.hasAdecentVertexDevelopmentOfColor(state.board, _eventdata.edge, _eventdata.player.color.text())">
+			<transition event="board.placeRoad" cond="!util.hasAdecentVertexOrEdgeDevelopmentOfColor(state.board, _eventdata.edge, _eventdata.player.color.text())">
 				<game:error message="There is no adjecent settlement or city for the player" />
 			</transition>
-			<transition event="board.placeRoad" cond="!util.checkPlayerResourcesAgainstCost(_eventdata.player, state.board.developments.development(@type == 'road').@cost)">
+			<transition event="board.placeRoad" cond="!util.checkPlayerResourcesAgainstCost(_eventdata.player, _eventdata.cost)"> 
 				<game:error message="You do not have enough resources to build a road." />
 			</transition>
-			<transition event="board.placeRoad" target="main.build">
+			<transition event="board.placeRoad">
 				<script>//<![CDATA[
 					log.info("eventdata: " + _eventdata);
-					util.debitPlayerResourcesByCost(_eventdata.player, state.board.developments.development(@type == 'road').@cost);
-					util.placeEdgeDevelopment(state.board, "road", _eventdata.player.color.text(), _evendata.edge.@x1, _evendata.edge.@y1, _evendata.edge.@x2, _evendata.edge.@y2); 
+					util.debitPlayerResourcesByCost(_eventdata.player, _eventdata.cost);
+					util.placeEdgeDevelopment(state.board, "road", _eventdata.player.color.text(), _eventdata.edge.@x1, _eventdata.edge.@y1, _eventdata.edge.@x2, _eventdata.edge.@y2); 
 				//]]></script>
+				<game:flagStateAsImportant important="true" />
 				<send 	event="'board.placeEdgeDevelopment'" 
 						target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
 						targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
@@ -781,6 +849,7 @@
 					util.placeVertexDevelopment(state.board, "city", _eventdata.player.color.text(),  _eventdata.vertex.@x, _eventdata.vertex.@y);
 						
 				//]]></script>
+				<game:flagStateAsImportant important="true" />
 				<send 	event="'board.placeVertexDevelopment'" 
 						target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
 						targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
@@ -809,6 +878,201 @@
 				</send>
 			</transition>
 			
+		</state>
+		
+		<state id="main.trade" initial="main.trade.selectResources">
+			<onentry>
+				<script>//<![CDATA[
+					state.board.appendChild(<trade><bank><resources /></bank></trade>);
+					for each(var resource in state.board.resources.resource) {
+						state.board.trade.bank.resources.appendChild(<resource type={resource.@type} count="0" />);
+					}
+					for each(var player in state.board.players.player) {
+						var playerColor = player.color.text();
+						state.board.trade.appendChild(<player color={playerColor}><resources/></player>);
+						for each(var resource in state.board.resources.resource) {
+							state.board.trade.player.(@color == playerColor).resources.appendChild(<resource type={resource.@type} count="0" />);
+						}
+					}
+				//]]></script>
+				
+				<send 	event="'board.tradeStarted'" 
+						target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+						targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+						id="'board.tradeStarted.send'">
+					<content expr="state.board.trade[0]" />
+				</send>
+			</onentry>
+			
+			<state id="main.trade.selectResources">
+				<transition event="board.resourceClick" cond="state.board.players.player.(color.text() == _eventdata.data.@color.text() &amp;&amp; playerId.text() == _eventdata.player.text()).length() == 0">
+					<game:error message="You cannot select other players resources for trading" />
+				</transition>
+				<transition event="board.resourceClick" cond="parseInt(state.board.trade.player.(@color == playerColor).resources.resource.(@type == resource).@count) + 1 > parseInt(state.board.players.player.(color == _eventdata.data.@color &amp;&amp; playerId == _eventdata.player).resources.resource.(@type == _eventdata.data.@resource).@count)">
+					<game:error message="You do not have enough resources" />
+				</transition>
+				
+				<transition event="board.resourceClick">
+					<script>//<![CDATA[
+						log.info("_eventdata: " + _eventdata.toXMLString());
+						var playerIdParam = _eventdata.player.text();
+						var playerColor = _eventdata.data.@color.text();
+						var resource = _eventdata.data.@resource.text();
+						
+						log.info("playerId: " + playerIdParam);
+						log.info("playerColor: " + playerColor);
+						log.info("resource: " + resource);
+						
+						var player = state.board.players.player.(color.text() == playerColor && playerId.text() == playerIdParam);
+						
+						var res = state.board.trade.player.(@color == playerColor).resources.resource.(@type == resource)[0];
+						
+						log.info("res: " + res.toXMLString());
+						
+						if(parseInt(res.@count) + 1 <= parseInt(player.resources.resource.(@type == resource).@count)) {
+							
+							res.@count = parseInt(res.@count) + 1;
+						}
+					//]]></script>
+					<send 	event="'board.tradeUpdated'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.tradeUpdated.send'">
+						<content expr="state.board.trade[0]" />
+					</send>
+				</transition>
+				
+				<transition event="board.tradeResourceClick" cond="state.board.players.player.(color.text() == _eventdata.data.@color.text() &amp;&amp; playerId.text() == _eventdata.player.text()).length() == 0">
+					<game:error message="You cannot select other players resources for trading" />
+				</transition>
+				
+				<transition event="board.tradeResourceClick" cond="parseInt(state.board.trade.player.(@color == playerColor).resources.resource.(@type == resource).@count) = 0">
+					<game:error message="You do not have this resource up for a trade." />
+				</transition>
+				
+				<transition event="board.tradeResourceClick">
+					<script>//<![CDATA[
+						log.info("_eventdata: " + _eventdata.toXMLString());
+						var playerIdParam = _eventdata.player.text();
+						var playerColor = _eventdata.data.@color.text();
+						var resource = _eventdata.data.@resource.text();
+						
+						log.info("playerId: " + playerIdParam);
+						log.info("playerColor: " + playerColor);
+						log.info("resource: " + resource);
+						
+						var player = state.board.players.player.(color.text() == playerColor && playerId.text() == playerIdParam);
+										
+						var res = state.board.trade.player.(@color == playerColor).resources.resource.(@type == resource)[0];
+						
+						log.info("res: " + res.toXMLString());
+						
+						if(parseInt(res.@count) - 1 >= 0) {						
+							res.@count = parseInt(res.@count) - 1;
+						}
+					//]]></script>
+					<send 	event="'board.tradeUpdated'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.tradeUpdated.send'">
+						<content expr="state.board.trade[0]" />
+					</send>
+				</transition>
+				
+				<transition event="board.playerClick" cond="!util.isCurrentPlayer(_eventdata.player.text())">
+					<game:error message="You are not the current player." />
+				</transition>
+				<transition event="board.playerClick" cond="_eventdata.data.@color.text() == util.getCurrentPlayer(state.board).color.text()">
+					<game:error message="You cannot trade with yourself." />
+				</transition>
+				<transition event="board.playerClick" cond="state.board.trade.player.(@color == _eventdata.data.@selectedColor).length() == 0">
+					<game:error message="That player is not part of this trade." />
+				</transition>
+				<transition event="board.playerClick" target="main.trade.confirmation">
+					<script>//<![CDATA[
+						var tradePlayer = state.board.trade.player.(@color == _eventdata.data.@selectedColor)[0];
+						log.info(tradePlayer.toXMLString());
+						tradePlayer.@selected = "true";
+						log.info(tradePlayer.toXMLString());
+					//]]></script>
+					<send 	event="'board.tradePlayerSelected'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.tradePlayerSelected.send'">
+						<param name="tradePlayer" expr="_eventdata.data.@selectedColor" />
+						<content expr="state.board.trade[0]" />
+					</send>
+				</transition>
+				<transition event="board.endTrade" target="main.build" />
+			</state>
+			
+			<state id="main.trade.confirmation">
+				<transition cond="state.board.trade.player.(@selected == 'true').length() == 0" target="main.trade.selectResources">
+					<game:error message="No players were selected" />
+				</transition>
+				<transition event="board.playerClick" cond="state.board.trade.player.(@color == _eventdata.data.@selectedColor).length() == 0">
+					<game:error message="That player is not part of this trade." />
+				</transition>
+				<transition event="board.playerClick" cond="util.isCurrentPlayer(_eventdata.player.text()) &amp;&amp; state.board.trade.player.(@color == _eventdata.data.@selectedColor)[0].@selected == 'true'" target="main.trade.selectResources">
+					<script>//<![CDATA[
+						var tradePlayer = state.board.trade.player.(@color == _eventdata.data.@selectedColor)[0];
+						delete state.board.trade.player.@selected;
+					//]]></script>
+					<send 	event="'board.tradePlayerDeselected'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.tradePlayerDeselected.send'">
+						<param name="tradePlayer" expr="_eventdata.data.@selectedColor" />
+						<content expr="state.board.trade[0]" />
+					</send>
+				</transition>
+				<transition event="board.playerClick" cond="state.board.players.player.(color.text() == state.board.trade.player.(@selected == 'true').@color).playerId.text() != _eventdata.player.text()">
+					<game:error message="You are not the selected player and cannot confirm the trade" />
+				</transition> 
+				<transition event="board.playerClick" cond="util.getCurrentPlayer(state.board).color.text() != _eventdata.data.@selectedColor">
+					<game:error message="You must confirm the trade with the active player." />
+				</transition>
+				<transition event="board.playerClick">
+					<send	event="'board.confirmTrade'"
+							targettype="'http://www.w3.org/TR/scxml/#SCXMLEventProcessor'"
+							target="'#_internal'"
+							id="'board.confirmTrade.send'">
+						<param name="offeredTrade" expr="state.board.trade.player.(@color == util.getCurrentPlayer(state.board).color.text())" />
+						<param name="selectedTrade" expr="state.board.trade.player.(@selected == 'true')" />
+					</send>
+				</transition>
+				
+				<transition event="board.confirmTrade" target="main.build">
+					<script>//<![CDATA[
+						util.processTrade(state.board, _eventdata.offeredTrade, _eventdata.selectedTrade);
+					//]]></script>
+					<send 	event="'board.tradeConfirmed'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.tradeConfirmed.send'">
+						<content expr="state.board.players[0]" />
+					</send>
+					<game:flagStateAsImportant important="true" />
+				</transition>
+				
+				<transition event="board.endTrade" target="main.build" />
+			</state>
+			
+			
+			<transition event="board.endTrade" target="main.build" />
+			
+			<onexit>
+				<script>//<![CDATA[
+					delete state.board.trade;
+				//]]></script>
+				
+				<send 	event="'board.tradeEnded'" 
+						target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+						targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+						id="'board.tradeStarted.send'">
+					<content expr="state.board.players[0]" />
+				</send>
+			</onexit>
 		</state>
 		
 	</state>

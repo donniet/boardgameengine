@@ -177,7 +177,7 @@ public class JsContext
 		factory.call(new ContextAction() {
 			@Override
 			public Object run(Context cx) {
-				//cx.setOptimizationLevel(-1);
+				cx.setOptimizationLevel(1);
 				
 				Log log = LogFactory.getLog(JsContext.class);
 				cx.initStandardObjects(rootScope);
