@@ -621,6 +621,13 @@
 					<script>//<![CDATA[
 						state.board.currentPlayer = (state.board.currentPlayer.text() >>> 0) + 1;
 					//]]></script>
+					<send 	event="'board.currentPlayerChanged'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.currentPlayerChanged.send'">
+						
+						<param name="currentPlayer" expr="state.board.currentPlayer.text()" />
+					</send>
 				</transition>
 				<transition cond="state.board.firstPlacement == 'true' &amp;&amp; (state.board.currentPlayer.text() >>> 0) + 1 >= state.board.players.player.length()" target="placement.buildSettlement">
 					<script>//<![CDATA[
@@ -631,12 +638,26 @@
 					<script>//<![CDATA[
 						state.board.currentPlayer = (state.board.currentPlayer.text() >>> 0) - 1;
 					//]]></script>
+					<send 	event="'board.currentPlayerChanged'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.currentPlayerChanged.send'">
+						
+						<param name="currentPlayer" expr="state.board.currentPlayer.text()" />
+					</send>
 				</transition>
 				<transition cond="state.board.firstPlacement != 'true' &amp;&amp; state.board.currentPlayer &lt;= 0" target="main">
 					<script>//<![CDATA[
 						state.board.currentPlayer = 1;
 						delete state.board.firstPlacement;
 					//]]></script>
+					<send 	event="'board.currentPlayerChanged'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.currentPlayerChanged.send'">
+						
+						<param name="currentPlayer" expr="state.board.currentPlayer.text()" />
+					</send>
 				</transition>
 			</state>
 		</state>
@@ -979,6 +1000,64 @@
 					</send>
 				</transition>
 				
+				<transition event="board.bankResourceClick" cond="!util.isCurrentPlayer(_eventdata.player.text())">
+					<game:error message="You are not the current player" />
+				</transition>
+				<transition event="board.bankResourceClick">
+					<script>//<![CDATA[
+						var resource = _eventdata.data.@resource.text();
+						var res = state.board.trade.bank.resources.resource.(@type == resource)[0];
+						
+						log.info("bank res: " + res.toXMLString());
+						
+						res.@count = parseInt(res.@count) + 1;
+					//]]></script>
+					<send 	event="'board.tradeUpdated'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.tradeUpdated.send'">
+						<content expr="state.board.trade[0]" />
+					</send>
+				</transition>
+				
+				<transition event="board.bankTradeResourceClick" cond="!util.isCurrentPlayer(_eventdata.player.text())">
+					<game:error message="You are not the current player" />
+				</transition>
+				<transition event="board.bankTradeResourceClick">
+					<script>//<![CDATA[
+						var resource = _eventdata.data.@resource.text();
+						var res = state.board.trade.bank.resources.resource.(@type == resource)[0];
+						
+						log.info("bank res: " + res.toXMLString());
+						
+						if(parseInt(res.@count) - 1 >= 0)
+							res.@count = parseInt(res.@count) - 1;
+					//]]></script>
+					<send 	event="'board.tradeUpdated'" 
+							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 
+							targettype="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEventProcessor'"
+							id="'board.tradeUpdated.send'">
+						<content expr="state.board.trade[0]" />
+					</send>
+				</transition>
+				
+				<transition event="board.bankClick" cond="!util.isCurrentPlayer(_eventdata.player.text())">
+					<game:error message="You are not the current player." />
+				</transition>
+				<transition event="board.bankClick" cond="!util.isValidBankTrade(state.board, state.board.trade)">
+					<game:error message="Invalid bank trade." />
+				</transition>
+				<transition event="board.bankClick">
+					<send	event="'board.confirmTrade'"
+							targettype="'http://www.w3.org/TR/scxml/#SCXMLEventProcessor'"
+							target="'#_internal'"
+							id="'board.confirmTrade.send'">
+						<param name="offeredTrade" expr="state.board.trade.player.(@color == util.getCurrentPlayer(state.board).color.text())" />
+						<param name="selectedTrade" expr="state.board.trade.bank" />
+						<param name="bankTrade" expr="'true'" />
+					</send>
+				</transition>
+				
 				<transition event="board.playerClick" cond="!util.isCurrentPlayer(_eventdata.player.text())">
 					<game:error message="You are not the current player." />
 				</transition>
@@ -1044,7 +1123,7 @@
 				
 				<transition event="board.confirmTrade" target="main.build">
 					<script>//<![CDATA[
-						util.processTrade(state.board, _eventdata.offeredTrade, _eventdata.selectedTrade);
+						util.processTrade(state.board, _eventdata.offeredTrade, _eventdata.selectedTrade, !!_eventdata.bankTrade);
 					//]]></script>
 					<send 	event="'board.tradeConfirmed'" 
 							target="'http://www.pilgrimsofnatac.com/schemas/game.xsd#GameEvent'" 

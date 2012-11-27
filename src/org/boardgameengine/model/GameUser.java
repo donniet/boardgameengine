@@ -23,7 +23,7 @@ import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.KeyFactory;
 import com.google.appengine.api.users.User;
 
-@PersistenceCapable
+@PersistenceCapable 
 public class GameUser extends ScriptableObject {
 	private static final long serialVersionUID = 4649802893267737141L;
 

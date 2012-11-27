@@ -138,7 +138,7 @@ public class GameServlet extends HttpServlet {
 				
 				t.makePersistent();
 				
-				resp.sendRedirect(String.format("/createGame?type=%s", KeyFactory.keyToString(t.getKey())));
+				resp.sendRedirect(String.format("createGame?type=%s", KeyFactory.keyToString(t.getKey())));
 			}
 		});
 		
@@ -180,11 +180,11 @@ public class GameServlet extends HttpServlet {
 				
 				h.makePersistent();
 				
-				resp.sendRedirect(String.format("/game/%s/", KeyFactory.keyToString(h.getKey())));
+				resp.sendRedirect(String.format("%s/", KeyFactory.keyToString(h.getKey())));
 			}
 		});
 		
-		addGetHandler("^/game/([^/]+)/datamodel", new GameServiceRequestHandler() {
+		addGetHandler("^/([^/]+)/datamodel", new GameServiceRequestHandler() {
 			@Override
 			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
 				String gameid = matches.group(1);
@@ -297,7 +297,7 @@ public class GameServlet extends HttpServlet {
 			}
 		});
 		
-		addGetHandler("^/game/([^/]+)/datamodel/([^/]+)", new GameServiceRequestHandler() {
+		addGetHandler("^/([^/]+)/datamodel/([^/]+)", new GameServiceRequestHandler() {
 			@Override
 			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
 				String gameid = matches.group(1);
@@ -397,7 +397,7 @@ public class GameServlet extends HttpServlet {
 			
 		});
 		
-		addGetHandler("^/game/([^/]+)/", new GameUserRequestHandler() {
+		addGetHandler("^/([^/]+)/", new GameUserRequestHandler() {
 			@Override
 			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
 				String gameid = matches.group(1);
@@ -458,7 +458,7 @@ public class GameServlet extends HttpServlet {
 			}
 		});
 		
-		addPostHandler("^/game/([^/]+)/start", new GameUserRequestHandler() {
+		addPostHandler("^/([^/]+)/start", new GameUserRequestHandler() {
 			@Override
 			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
 				String gameid = matches.group(1);
@@ -492,7 +492,7 @@ public class GameServlet extends HttpServlet {
 			}
 		});
 		
-		addPostHandler("^/game/([^/]+)/join", new GameUserRequestHandler() {
+		addPostHandler("^/([^/]+)/join", new GameUserRequestHandler() {
 			@Override
 			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
 				String gameid = matches.group(1);
@@ -523,7 +523,7 @@ public class GameServlet extends HttpServlet {
 			}
 		});
 		
-		addPostHandler("^/game/([^/]+)/event/([^/]+)", new GameServiceRequestHandler() {
+		addPostHandler("^/([^/]+)/event/([^/]+)", new GameServiceRequestHandler() {
 			@Override
 			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches) throws IOException {
 				String eventid = "board." + matches.group(2);
@@ -630,7 +630,7 @@ public class GameServlet extends HttpServlet {
 			}
 		});
 		
-		addGetHandler("^/game/([^/]+)/details", new GameServiceRequestHandler() {
+		addGetHandler("^/([^/]+)/details", new GameServiceRequestHandler() {
 			@Override
 			public void handle(HttpServletRequest req, HttpServletResponse resp, Matcher matches)
 					throws IOException {

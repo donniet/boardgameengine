@@ -28,6 +28,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.boardgameengine.GameServlet;
 
 import flexjson.transformer.DateTransformer;
+import flexjson.transformer.Transformer;
 
 public class Config {
 	private static Config instance_ = null;
@@ -65,7 +66,7 @@ public class Config {
 			dateFormatString_ = props_.getProperty("dateFormat");
 			dateFormat_ = new SimpleDateFormat(dateFormatString_);
 			dateTransformer_ = new DateTransformer(dateFormatString_);
-			
+						
 			encoding_ = props_.getProperty("encoding");
 			digestAlgorithm_ = props_.getProperty("digestAlgorithm");
 			encryptionAlgorithm_ = props_.getProperty("ecryptionAlgorithm");

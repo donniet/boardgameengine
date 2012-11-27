@@ -103,20 +103,23 @@ public class GameState {
 			PMF.executeCommandInTransaction(new PersistenceCommand() {
 				@Override
 				public Object exec(PersistenceManager pm) {
-					Query q = pm.newQuery(GameState.class, "game == gameIn && important == false");
-					q.declareParameters(Game.class.getName() + " gameIn");
-					q.setResult("count(key)");
+					if(game.getPersisted()) {
 					
-					int results = (Integer)q.execute(game);
-					
-					int stateHistorySize = Config.getInstance().getStateHistorySize();
-										
-					if(results > 2 * stateHistorySize) {
-						q = pm.newQuery(GameState.class, "game == gameIn && important == false");
-						q.setOrdering("stateDate asc");
+						Query q = pm.newQuery(GameState.class, "game == gameIn && important == false");
 						q.declareParameters(Game.class.getName() + " gameIn");
-						q.setRange(0, results - stateHistorySize);
-						q.deletePersistentAll(game);
+						q.setResult("count(key)");
+						
+						long results = (Long)q.execute(game);
+						
+						int stateHistorySize = Config.getInstance().getStateHistorySize();
+											
+						if(results > 2 * stateHistorySize) {
+							q = pm.newQuery(GameState.class, "game == gameIn && important == false");
+							q.setOrdering("stateDate asc");
+							q.declareParameters(Game.class.getName() + " gameIn");
+							q.setRange(0, results - stateHistorySize);
+							q.deletePersistentAll(game);
+						}
 					}
 					
 					return null;

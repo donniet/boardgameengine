@@ -69,7 +69,10 @@ import com.google.appengine.api.users.User;
 import com.google.appengine.api.utils.SystemProperty;
 
 import flexjson.JSONSerializer;
+import flexjson.transformer.StringTransformer;
 
+import javax.jdo.JDOHelper;
+import javax.jdo.ObjectState;
 import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
 import javax.jdo.annotations.Element;
@@ -230,21 +233,26 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		cxt.setLocal("game", this);		
 		
 		try {
-			GameState gs = getMostRecentState();
+			GameState gs = null;
 			
-			if(gs != null) {				
-				gs.injectInto(cxt);
-				
-				Set s = exec.getCurrentStatus().getStates();
-				Map ms = exec.getStateMachine().getTargets();
-				s.clear();
-				
-				Set<String> ss = gs.getStateSet();
-				for(String state : ss) {
-					s.add(ms.get(state));
-				}				
+			if(getPersisted()) {
+				gs = getMostRecentState();		
+			
+				if(gs != null) {				
+					gs.injectInto(cxt);
+					
+					Set s = exec.getCurrentStatus().getStates();
+					Map ms = exec.getStateMachine().getTargets();
+					s.clear();
+					
+					Set<String> ss = gs.getStateSet();
+					for(String state : ss) {
+						s.add(ms.get(state));
+					}				
+				}
 			}
-			else {
+			
+			if(gs == null) {
 				exec.go();
 				
 				persistGameState(true);
@@ -255,6 +263,12 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 		}
 		isDirty_ = false;
 		
+	}
+	
+	public boolean getPersisted() {
+		ObjectState os = JDOHelper.getObjectState(this);
+		
+		return os == ObjectState.PERSISTENT_CLEAN || os == ObjectState.PERSISTENT_NEW || os == ObjectState.HOLLOW_PERSISTENT_NONTRANSACTIONAL;
 	}
 	
 
@@ -779,8 +793,8 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 	public void serialize(Writer out) {
 		JSONSerializer json = new JSONSerializer();
 		
-		for(Player p : players) {
-			
+		for(Player p : getPlayers()) {
+			log.info("player: " + p.getRole());
 		}
 		
 		json.include("events")
@@ -808,7 +822,8 @@ public class Game extends ScriptableObject implements EventDispatcher, SCXMLList
 			.exclude("players.game")
 			.exclude("gameType.stateChart")
 			
-			.transform(Config.getInstance().getDateTransfomer(), Date.class);
+			.transform(Config.getInstance().getDateTransfomer(), Date.class)
+			.transform(new StringTransformer(), Key.class);
 			
 		if(SystemProperty.environment.value() == SystemProperty.Environment.Value.Development)
 			json.prettyPrint(true);

@@ -62,6 +62,8 @@ PlayersView.prototype.render = function() {
 		var p = this.board_.player_[i];
 		
 		var playerDetails = this.board_.gameDetails_.playerMap[p.color_];
+		console.log("player color: " + p.color_);
+		console.log("player map: " + this.board_.gameDetails_.playerMap);
 		
 		var li = $("<li class='player-" + i + "' />");
 		

@@ -100,7 +100,7 @@ public class GameType {
 			e.printStackTrace();
 		}
 	}
-
+	
 	public void setTypeName(String typeName) {
 		this.typeName = typeName;
 	}
